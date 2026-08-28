@@ -1,0 +1,21 @@
+# --- Core Performance & Testing Flags ---
+is_debug = false
+is_component_build = false
+symbol_level = 1
+blink_symbol_level = 0
+is_official_build = false
+proprietary_codecs = true
+ffmpeg_branding = "Chrome"
+
+# --- Privacy Hardening & Anti-Telemetry ---
+enable_google_now = false
+enable_one_click_signin = false
+enable_reporting = false
+safe_browsing_mode = 0
+enable_mdns = false
+enable_remoting = false
+use_official_google_api_keys = false
+
+# --- General De-bloating ---
+enable_nacl = false
+enable_hangout_services_extension = false
