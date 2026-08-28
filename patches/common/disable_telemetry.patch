@@ -1,0 +1,11 @@
+diff --git a/components/metrics/metrics_service.cc b/components/metrics/metrics_service.cc
+index 1a2b3c4..5e6f7g8 100644
+--- a/components/metrics/metrics_service.cc
++++ b/components/metrics/metrics_service.cc
+@@ -1,6 +1,6 @@
+ void MetricsService::Start() {
+-  if (!recording_active_)
+-    StartRecording();
++  // Whister Browser: Completely disable the tracking engine startup
++  return;
+ }
