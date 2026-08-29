@@ -1,0 +1,24 @@
+diff --git a/chrome/browser/browser_resources.grd b/chrome/browser/browser_resources.grd
+index 1a2b3c4..5e6f7g8 100644
+--- a/chrome/browser/browser_resources.grd
++++ b/chrome/browser/browser_resources.grd
+@@ -1,6 +1,11 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <grit latest_public_release="0" current_release="1" output_all_resource_defines="false">
+   <outputs>
++    <!-- Whister Browser: Register Custom Dashboard Resource Assets -->
++    <output filename="grit/whister_resources.h" type="rc_header">
++      <emit emit_type='define' />
++    </output>
++    <output filename="whister_resources.pak" type="data_package" />
+   </outputs>
+   <release seq="1">
+     <includes>
+@@ -8,5 +13,9 @@
+       <include name="IDR_COMMERCE_INTERNALS_HTML" file="resources\commerce_internals\index.html" type="BINDATA" />
++      <include name="IDR_WHISTER_NEW_TAB_HTML" file="default_apps\new_tab\index.html" type="BINDATA" />
++      <include name="IDR_WHISTER_NEW_TAB_CSS" file="default_apps\new_tab\style.css" type="BINDATA" />
++      <include name="IDR_WHISTER_NEW_TAB_JS" file="default_apps\new_tab\app.js" type="BINDATA" />
+     </includes>
+   </release>
+ </grit>
