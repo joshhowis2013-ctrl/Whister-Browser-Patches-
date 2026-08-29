@@ -1,0 +1,21 @@
+diff --git a/chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc b/chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc
+index a1b2c3d..e5f6g7h 100644
+--- a/chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc
++++ b/chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc
+@@ -1,5 +1,11 @@
+ #include "chrome/browser/ui/webui/chrome_web_ui_controller_factory.h"
+ 
++namespace {
++bool IsWhisterScheme(const GURL& url) {
++  return url.scheme() == "whister";
++}
++}
++
+ WebUI::TypeID ChromeWebUIControllerFactory::GetWebUIType(
+     content::BrowserContext* browser_context, const GURL& url) {
++  if (IsWhisterScheme(url)) {
++    return &kChromeUISettingsURL;
++  }
+   if (url.host_piece() == chrome::kChromeUISettingsHost)
+     return &kChromeUISettingsURL;
+

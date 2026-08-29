@@ -1,0 +1,18 @@
+diff --git a/content/common/url_schemes.cc b/content/common/url_schemes.cc
+index 4c12bc6..7d02026 100644
+--- a/content/common/url_schemes.cc
++++ b/content/common/url_schemes.cc
+@@ -1,6 +1,7 @@
+ #include "content/public/common/url_constants.h"
+ 
+ namespace content {
++const char kWhisterUIScheme[] = "whister";
+ 
+ void RegisterContentSchemes(WebUISchemeRegistry* registry) {
+   // Secure defaults
+@@ -8,5 +9,6 @@ void RegisterContentSchemes(WebUISchemeRegistry* registry) {
+   registry->RegisterStandardScheme(kChromeUIScheme, SCHEME_WITHOUT_PORT);
+   registry->RegisterStandardScheme(kChromeUIUntrustedScheme, SCHEME_WITHOUT_PORT);
++  registry->RegisterStandardScheme(kWhisterUIScheme, SCHEME_WITHOUT_PORT);
+ }
+ }  // namespace content

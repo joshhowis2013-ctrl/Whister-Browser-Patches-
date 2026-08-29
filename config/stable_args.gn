@@ -20,3 +20,5 @@ use_official_google_api_keys = false
 # We allow the files to compile so dependencies resolve, but we disable the cloud engines
 safe_browsing_mode = 1
 safe_browsing_use_locally_built_blocklists = false
+optimize_webui = false
+load_webui_from_disk = true
