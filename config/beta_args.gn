@@ -15,9 +15,14 @@ enable_reporting = false
 enable_mdns = false
 enable_remoting = false
 use_official_google_api_keys = false
+enable_dice_support = false
 
 # --- The Safe Browsing Network Sever ---
 safe_browsing_mode = 1
 safe_browsing_use_locally_built_blocklists = false
+
+# --- General De-bloating & Fast WebUI Iteration ---
+enable_nacl = false
+enable_hangout_services_extension = false
 optimize_webui = false
 load_webui_from_disk = true
