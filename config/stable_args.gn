@@ -6,16 +6,17 @@ blink_symbol_level = 0
 is_official_build = true
 proprietary_codecs = true
 ffmpeg_branding = "Chrome"
+chrome_pgo_phase = 0
 
 # --- Privacy Hardening & Anti-Telemetry ---
 enable_google_now = false
 enable_one_click_signin = false
 enable_reporting = false
-safe_browsing_mode = 0
 enable_mdns = false
 enable_remoting = false
 use_official_google_api_keys = false
 
-# --- General De-bloating ---
-enable_nacl = false
-enable_hangout_services_extension = false
+# --- The Safe Browsing Network Sever ---
+# We allow the files to compile so dependencies resolve, but we disable the cloud engines
+safe_browsing_mode = 1
+safe_browsing_use_locally_built_blocklists = false

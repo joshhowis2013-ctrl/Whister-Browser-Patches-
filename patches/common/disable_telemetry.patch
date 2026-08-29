@@ -9,3 +9,5 @@ index 1a2b3c4..5e6f7g8 100644
 +  // Whister Browser: Completely disable the tracking engine startup
 +  return;
  }
+ 
+

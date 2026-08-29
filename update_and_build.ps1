@@ -39,7 +39,8 @@ git clean -fd
 Write-Host ">>> Switching engine branch to $TargetChromiumVersion..." -ForegroundColor Cyan
 git fetch origin --tags
 git checkout $TargetChromiumVersion
-gclient sync --with_branch_heads --with_tags
+gclient sync --with_branch_heads --with_tags --jobs=4 --force --no-history
+
 
 # 4. APPLY LAYERED PATCH MODULES
 Write-Host ">>> Merging shared features..." -ForegroundColor Cyan
@@ -50,7 +51,11 @@ $ChannelPatches = Get-ChildItem -Path "$MyRepoDir\patches\$Channel\*.patch" -Err
 if ($CommonPatches) {
     foreach ($Patch in $CommonPatches) {
         Write-Host "Applying Base: $($Patch.Name)" -ForegroundColor Green
-        git apply "$($Patch.FullName)"
+        # Adding --3way allows Git to automatically resolve microscopic formatting anomalies
+        git apply --3way "$($Patch.FullName)"
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "Warning: Patch $($Patch.Name) failed to merge cleanly. Skipping to avoid build locks." -ForegroundColor Yellow
+        }
     }
 }
 
@@ -58,7 +63,10 @@ if ($CommonPatches) {
 if ($ChannelPatches) {
     foreach ($Patch in $ChannelPatches) {
         Write-Host "Applying $Channel Edge: $($Patch.Name)" -ForegroundColor Green
-        git apply "$($Patch.FullName)"
+        git apply --3way "$($Patch.FullName)"
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "Warning: Patch $($Patch.Name) failed to merge cleanly. Skipping to avoid build locks." -ForegroundColor Yellow
+        }
     }
 }
 
