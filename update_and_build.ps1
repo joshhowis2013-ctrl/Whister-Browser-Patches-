@@ -69,6 +69,15 @@ if ($ChannelPatches) {
         }
     }
 }
+# Layer C: Custom Brand Image Asset Overlays (PNG + ICO)
+$CustomAssetsDir = "$MyRepoDir\branding\common\assets"
+$GoogleThemeDir = "$ChromiumSrcDir\chrome\app\theme\chromium"
+
+if (Test-Path $CustomAssetsDir) {
+    Write-Host ">>> Overwriting default logo assets and Windows binaries with Whister branding graphics..." -ForegroundColor Green
+    # Copy all PNGs and the Windows .ico file directly over the defaults
+    Copy-Item -Path "$CustomAssetsDir\*.*" -Destination $GoogleThemeDir -Force
+}
 
 # 5. DYNAMICALLY CREATE OUTPUT FOLDER AND INJECT THE ARGS FILE
 Write-Host ">>> Injecting configuration args profile..." -ForegroundColor Cyan
