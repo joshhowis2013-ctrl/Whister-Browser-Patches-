@@ -1,0 +1,31 @@
+diff --git a/ui/webui/resources/css/md_colors.css b/ui/webui/resources/css/md_colors.css
+index 1a2b3c4..5e6f7g8 100644
+--- a/ui/webui/resources/css/md_colors.css
++++ b/ui/webui/resources/css/md_colors.css
+@@ -1,10 +1,24 @@
+-/* Copyright 2016 The Chromium Authors */
+-
+ [dark] {
+-  --google-blue-300: #8ab4f8;
+-  --google-blue-500: #1a73e8;
+-  --google-blue-700: #174ea6;
+-  --cr-primary-color: var(--google-blue-300);
+-  --md-background-color: #202124;
+-  --md-toolbar-color: #2f3033;
++  /* Whister Engine Custom Variables Overrides */
++  --google-blue-300: #6200ee !important; /* Whister Purple Accent Glow */
++  --google-blue-500: #6200ee !important;
++  --google-blue-700: #3700b3 !important;
++  --cr-primary-color: #6200ee !important;
++  --cr-focus-outline-color: #6200ee !important;
++  --cr-toggle-color: #6200ee !important;
++  --cr-link-color: #6200ee !important;
++  
++  /* Surface color transformations matching your custom design canvas layout */
++  --md-background-color: #0d0e15 !important; /* Deep dark background */
++  --md-toolbar-color: #1a1c29 !important;    /* Sleek container toolbar */
++  --cr-card-background-color: #1a1c29 !important;
++  --cr-sidebar-background-color: #0d0e15 !important;
++  --cr-primary-text-color: #e2e8f0 !important;
++  --cr-secondary-text-color: #64748b !important;
+ }
