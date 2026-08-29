@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Tab</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="ntp-container">
+        <!-- Live Dynamic Time-of-Day Greeting -->
+        <h1 id="greeting">Good afternoon</h1>
+        <div id="clock">12:00 PM</div>
+
+        <!-- Search Bar with Dynamic Engine Selector -->
+        <div class="search-box-wrapper">
+            <select id="engine-selector">
+                <option value="ddg">🦆</option>
+                <option value="brave">🦁</option>
+                <option value="google">🌐</option>
+            </select>
+            <input type="text" id="search-input" placeholder="Search securely with DuckDuckGo..." autofocus>
+        </div>
+
+        <!-- Live Local Weather Widget Card -->
+        <div class="weather-badge" id="weather-card">
+            <span class="temp" id="weather-temp">--°C</span>
+            <div class="weather-meta">
+                <span class="condition" id="weather-cond">Loading...</span>
+                <span class="location">Local Area</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
