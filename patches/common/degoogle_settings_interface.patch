@@ -1,0 +1,26 @@
+diff --git a/chrome/browser/resources/settings/people_page/people_page.html b/chrome/browser/resources/settings/people_page/people_page.html
+index 1a2b3c4..5e6f7g8 100644
+--- a/chrome/browser/resources/settings/people_page/people_page.html
++++ b/chrome/browser/resources/settings/people_page/people_page.html
+@@ -1,6 +1,7 @@
+ <style include="settings-shared-style">
+ </style>
+ <div class="cr-row first">
+-  <!-- Whister Browser: Completely remove Google Sign-In and Profile Sync cards -->
+-  <template is="dom-if" if="false">
++  <template is="dom-if" if="false">
+     <div id="profile-card" class="flex"></div>
+   </template>
+ </div>
+diff --git a/chrome/browser/resources/settings/privacy_page/privacy_page.html b/chrome/browser/resources/settings/privacy_page/privacy_page.html
+index 8b9c0d1..e2f3g4h 100644
+--- a/chrome/browser/resources/settings/privacy_page/privacy_page.html
++++ b/chrome/browser/resources/settings/privacy_page/privacy_page.html
+@@ -1,5 +1,6 @@
+ <div class="cr-row first">
+-  <!-- Whister Browser: Hard-hide Google cloud diagnostics and metrics loops -->
+-  <template is="dom-if" if="false">
++  <template is="dom-if" if="false">
+     <settings-metrics-reporting-toggle></settings-metrics-reporting-toggle>
+   </template>
+ </div>
