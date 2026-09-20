@@ -1,0 +1,63 @@
+name: Validate repository
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate patches and configuration
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate required files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f README.md
+          test -f update_and_build.ps1
+          test -f config/stable_args.gn
+          test -f config/beta_args.gn
+          test -f branding/common/extensions/cjpalhdlnbpafiamejdnhcphjbkeiagm.json
+          test -d patches/common
+          test -n "$(find patches/common -maxdepth 1 -type f -name '*.patch' -print -quit)"
+
+      - name: Validate patch file format
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' patch_file; do
+            grep -q '^diff --git a/' "$patch_file"
+            grep -q '^--- ' "$patch_file"
+            grep -q '^+++ ' "$patch_file"
+          done < <(find patches -type f -name '*.patch' -print0)
+
+      - name: Validate JSON configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m json.tool branding/common/extensions/cjpalhdlnbpafiamejdnhcphjbkeiagm.json >/dev/null
+
+      - name: Validate PowerShell syntax
+        shell: pwsh
+        run: |
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Join-Path $PWD 'update_and_build.ps1'),
+            [ref]$null,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | Format-List
+            exit 1
+          }

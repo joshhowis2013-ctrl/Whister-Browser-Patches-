@@ -1,0 +1,54 @@
+name: Build Whister Browser
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: Chromium channel to build
+        required: true
+        type: choice
+        options:
+          - stable
+          - beta
+        default: stable
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ inputs.channel }}
+    runs-on: windows-2022
+    timeout-minutes: 360
+
+    steps:
+      - name: Check out patch repository
+        uses: actions/checkout@v4
+
+      - name: Install depot_tools
+        shell: pwsh
+        run: |
+          git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git "$env:RUNNER_TEMP\depot_tools"
+          Add-Content -Path $env:GITHUB_PATH -Value "$env:RUNNER_TEMP\depot_tools"
+
+      - name: Fetch Chromium source
+        shell: pwsh
+        working-directory: C:\
+        run: |
+          if (-not (Test-Path C:\chromium\src)) {
+            New-Item -ItemType Directory -Path C:\chromium | Out-Null
+            Set-Location C:\chromium
+            fetch chromium
+          }
+
+      - name: Run Whister build
+        shell: pwsh
+        run: .\update_and_build.ps1 -Channel "${{ inputs.channel }}"
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: whister-${{ inputs.channel }}-installer
+          path: C:\chromium\src\out\**\mini_installer.exe
+          if-no-files-found: error
+          retention-days: 14
