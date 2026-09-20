@@ -31,6 +31,22 @@ jobs:
           git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git "$env:RUNNER_TEMP\depot_tools"
           Add-Content -Path $env:GITHUB_PATH -Value "$env:RUNNER_TEMP\depot_tools"
 
+      - name: Free runner disk space
+        shell: pwsh
+        run: |
+          $paths = @(
+            'C:\Program Files\Android',
+            'C:\Program Files (x86)\Android',
+            'C:\hostedtoolcache\windows\Java',
+            'C:\hostedtoolcache\windows\dotnet'
+          )
+          foreach ($path in $paths) {
+            if (Test-Path $path) {
+              Remove-Item $path -Recurse -Force -ErrorAction SilentlyContinue
+            }
+          }
+          Get-PSDrive C
+
       - name: Fetch Chromium source
         shell: pwsh
         working-directory: C:\
@@ -38,7 +54,7 @@ jobs:
           if (-not (Test-Path C:\chromium\src)) {
             New-Item -ItemType Directory -Path C:\chromium | Out-Null
             Set-Location C:\chromium
-            fetch chromium
+            fetch --no-history chromium
           }
 
       - name: Run Whister build

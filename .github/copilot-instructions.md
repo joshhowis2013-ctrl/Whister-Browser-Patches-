@@ -120,10 +120,8 @@ runner even if they are not installed on the local Windows machine.
   patches. Do not assume disabling a GN feature replaces the corresponding
   Chromium patch.
 - The build script assumes Windows absolute paths and a case-insensitive
-  filesystem. Be careful when adding paths because Linux CI and Git preserve
-  case even though the local script currently refers to the branding asset
-  directory as `branding\common\assets` while the checked-in directory is
-  `branding/common/Assets`.
+  filesystem. Keep checked-in path casing consistent because Linux CI and Git
+  preserve case.
 - Do not silently treat a failed patch as success. The current script logs a
   warning and continues after `git apply --3way` failure; any change to this
   behavior should be deliberate because it can produce a partially patched

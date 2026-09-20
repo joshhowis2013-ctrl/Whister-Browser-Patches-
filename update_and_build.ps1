@@ -37,7 +37,7 @@ git clean -fd
 
 # 3. SWAP CORE ENGINE HEAD TAG
 Write-Host ">>> Switching engine branch to $TargetChromiumVersion..." -ForegroundColor Cyan
-git fetch origin --tags
+git fetch origin "$TargetChromiumVersion`:$TargetChromiumVersion" --no-tags
 git checkout $TargetChromiumVersion
 gclient sync --with_branch_heads --with_tags --jobs=4 --force --no-history
 
@@ -70,7 +70,7 @@ if ($ChannelPatches) {
     }
 }
 # Layer C: Custom Brand Image Asset Overlays (PNG + ICO)
-$CustomAssetsDir = "$MyRepoDir\branding\common\assets"
+$CustomAssetsDir = "$MyRepoDir\branding\common\Assets"
 $GoogleThemeDir = "$ChromiumSrcDir\chrome\app\theme\chromium"
 
 if (Test-Path $CustomAssetsDir) {
@@ -109,4 +109,3 @@ Write-Host ">>> Launching Autoninja compiler..." -ForegroundColor Cyan
 cmd /c "autoninja -C $BuildOutPath mini_installer"
 
 Write-Host ">>> Compilation finished! Check $BuildOutPath\mini_installer.exe" -ForegroundColor Green
-
