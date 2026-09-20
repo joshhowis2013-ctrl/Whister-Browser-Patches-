@@ -16,7 +16,7 @@ if ($Channel -eq "stable") {
     $BuildOutPath = "out\StableRelease"
     $ConfigFile = "$MyRepoDir\config\stable_args.gn"
 } else {
-    $TargetChromiumVersion = "refs/tags/153.0.8010.11"
+    $TargetChromiumVersion = "refs/tags/155.0.8044.0"
     $BuildOutPath = "out\BetaRelease"
     $ConfigFile = "$MyRepoDir\config\beta_args.gn"
 }
