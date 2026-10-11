@@ -1,5 +1,4 @@
 diff --git a/content/common/url_schemes.cc b/content/common/url_schemes.cc
-index 4c12bc6..7d02026 100644
 --- a/content/common/url_schemes.cc
 +++ b/content/common/url_schemes.cc
 @@ -1,6 +1,7 @@

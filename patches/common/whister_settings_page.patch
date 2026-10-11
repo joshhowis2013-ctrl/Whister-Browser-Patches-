@@ -1,0 +1,44 @@
+diff --git a/chrome/browser/ui/webui/BUILD.gn b/chrome/browser/ui/webui/BUILD.gn
+--- a/chrome/browser/ui/webui/BUILD.gn
++++ b/chrome/browser/ui/webui/BUILD.gn
+@@ -66,0 +67,1 @@
++    "//chrome/browser/ui/webui/whister",
+diff --git a/chrome/browser/ui/webui/chrome_web_ui_configs.cc b/chrome/browser/ui/webui/chrome_web_ui_configs.cc
+--- a/chrome/browser/ui/webui/chrome_web_ui_configs.cc
++++ b/chrome/browser/ui/webui/chrome_web_ui_configs.cc
+@@ -21,0 +22,1 @@
++#include "chrome/browser/ui/webui/whister/whister_settings_ui.h"
+@@ -273,0 +275,3 @@
++  map.AddWebUIConfig(std::make_unique<whister::WhisterSettingsUIConfig>());
++  map.AddWebUIConfig(std::make_unique<whister::WhisterSetupUIConfig>());
++  map.AddWebUIConfig(std::make_unique<whister::WhisterNewTabUIConfig>());
+diff --git a/chrome/browser/browser_resources.grd b/chrome/browser/browser_resources.grd
+--- a/chrome/browser/browser_resources.grd
++++ b/chrome/browser/browser_resources.grd
+@@ -109,0 +110,7 @@
++      <include name="IDR_WHISTER_SETTINGS_HTML" file="resources\whister_new_tab\settings.html" type="BINDATA" />
++      <include name="IDR_WHISTER_SETTINGS_CSS" file="resources\whister_new_tab\settings.css" type="BINDATA" />
++      <include name="IDR_WHISTER_SETTINGS_JS" file="resources\whister_new_tab\settings.js" type="BINDATA" />
++      <include name="IDR_WHISTER_SETUP_HTML" file="resources\whister_new_tab\setup.html" type="BINDATA" />
++      <include name="IDR_WHISTER_NEW_TAB_HTML" file="resources\whister_new_tab\index.html" type="BINDATA" />
++      <include name="IDR_WHISTER_NEW_TAB_CSS" file="resources\whister_new_tab\style.css" type="BINDATA" />
++      <include name="IDR_WHISTER_NEW_TAB_JS" file="resources\whister_new_tab\app.js" type="BINDATA" />
+diff --git a/chrome/browser/browser_about_handler.cc b/chrome/browser/browser_about_handler.cc
+--- a/chrome/browser/browser_about_handler.cc
++++ b/chrome/browser/browser_about_handler.cc
+@@ -62,0 +63,6 @@
++  if (host == "welcome" || host == "welcome-win10") {
++    host = "whister-setup";
++  } else if (host == "settings" &&
++             (url->GetPath().empty() || url->GetPath() == "/")) {
++    host = "whister-settings";
++  }
+diff --git a/chrome/browser/ui/startup/startup_browser_creator_impl.cc b/chrome/browser/ui/startup/startup_browser_creator_impl.cc
+--- a/chrome/browser/ui/startup/startup_browser_creator_impl.cc
++++ b/chrome/browser/ui/startup/startup_browser_creator_impl.cc
+@@ -706,0 +707,5 @@
++    if (is_first_run_ == chrome::startup::IsFirstRun::kYes) {
++      StartupTabs setup_tabs;
++      setup_tabs.emplace_back(GURL("chrome://whister-setup"));
++      PrependTabs(setup_tabs, &tabs);
++    }

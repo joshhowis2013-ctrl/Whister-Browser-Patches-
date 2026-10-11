@@ -1,0 +1,10 @@
+diff --git a/chrome/browser/browser_about_handler.cc b/chrome/browser/browser_about_handler.cc
+--- a/chrome/browser/browser_about_handler.cc
++++ b/chrome/browser/browser_about_handler.cc
+@@ -64,6 +64,9 @@
+   } else if (host == "settings" &&
+              (url->GetPath().empty() || url->GetPath() == "/")) {
+     host = "whister-settings";
++  } else if (host == "newtab") {
++    host = "whister-newtab";
+   }

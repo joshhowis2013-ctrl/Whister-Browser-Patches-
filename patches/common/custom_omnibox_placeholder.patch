@@ -1,14 +1,9 @@
 diff --git a/chrome/app/generated_resources.grd b/chrome/app/generated_resources.grd
-index 1a2b3c4..5e6f7g8 100644
 --- a/chrome/app/generated_resources.grd
 +++ b/chrome/app/generated_resources.grd
-@@ -2500,3 +2500,3 @@
-       <message name="IDS_OMNIBOX_EMPTY_HINT_GOOGLE" desc="The placeholder text for the omnibox when Google is the default engine.">
--        Ask Google or type a URL
-+        Search securely with Whister or type a URL
-       </message>
-
-       <message name="IDS_OMNIBOX_EMPTY_HINT" desc="The placeholder text for the omnibox when an independent search engine is default.">
--        Search or type a URL
-+        Search securely with Whister or type a URL
+@@ -7437,4 +7437,4 @@
+       <!-- Omnibox -->
+       <message name="IDS_OMNIBOX_PLACEHOLDER_TEXT" desc="The text displayed in the Omnibox when it is empty and unfocused.">
+-        Search <ph name="SEARCH_ENGINE_NAME">$1<ex>Google</ex></ph> or type a URL
++        Search with <ph name="SEARCH_ENGINE_NAME">$1<ex>Google</ex></ph> or type a URL
        </message>
