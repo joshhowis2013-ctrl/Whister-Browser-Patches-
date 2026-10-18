@@ -21,6 +21,7 @@ updateTimeAndGreeting();
 // 2. INTERACTIVE SEARCH & URL SMART ROUTER MATRIX
 const searchInput = document.getElementById('search-input');
 const engineSelector = document.getElementById('engine-selector');
+const searchEnginePreferenceKey = 'whister-search-engine';
 
 const placeholders = {
     ddg: "Search securely with DuckDuckGo...",
@@ -28,8 +29,35 @@ const placeholders = {
     google: "Search upstream via Google..."
 };
 
+const searchTargets = {
+    ddg: 'https://duckduckgo.com',
+    brave: 'https://search.brave.com/search',
+    google: 'https://www.google.com/search'
+};
+
+try {
+    const savedEngine = localStorage.getItem(searchEnginePreferenceKey);
+    if (Object.prototype.hasOwnProperty.call(searchTargets, savedEngine)) {
+        engineSelector.value = savedEngine;
+    }
+} catch (error) {
+    // Keep the chooser usable when browser storage is unavailable.
+}
+
+function updateSearchPlaceholder() {
+    searchInput.placeholder = placeholders[engineSelector.value] || 'Choose an engine to search...';
+}
+
+updateSearchPlaceholder();
+
 engineSelector.addEventListener('change', function() {
-    searchInput.placeholder = placeholders[engineSelector.value];
+    updateSearchPlaceholder();
+    try {
+        localStorage.setItem(searchEnginePreferenceKey, engineSelector.value);
+    } catch (error) {
+        // The selection still applies for this tab if storage is unavailable.
+    }
+    searchInput.focus();
 });
 
 searchInput.addEventListener('keydown', function(e) {
@@ -55,69 +83,221 @@ searchInput.addEventListener('keydown', function(e) {
             if (!/^https?:\/\//i.test(targetUrl)) {
                 targetUrl = 'https://' + targetUrl;
             }
-            window.location.href = targetUrl;
-                } else {
-            // It's a true search term! Use native browser object API mapping to build the URL safely
-            let searchTarget = "https://duckduckgo.com";
-            
-            // Setting the correct search paths so engines parse query variables
-            if (engineSelector.value === 'brave') {
-                searchTarget = "https://brave.com";
-            } else if (engineSelector.value === 'google') {
-                searchTarget = "https://google.com";
+            chrome.send('navigateToUrl', [targetUrl]);
+        } else {
+            const searchTarget = searchTargets[engineSelector.value];
+            if (!searchTarget) {
+                engineSelector.focus();
+                searchInput.placeholder = 'Choose a search engine first...';
+                return;
             }
 
             const urlObj = new URL(searchTarget);
             urlObj.searchParams.set('q', userText);
             
-            window.location.href = urlObj.toString();
+            chrome.send('navigateToUrl', [urlObj.toString()]);
         }
 
     }
 });
 
 
-// 3. LIVE FREE WEATHER TELEMETRY POLL
-async function fetchLiveWeather() {
+// External weather requests are blocked from chrome:// WebUI pages by design.
+document.getElementById('weather-temp').textContent = '--°C';
+document.getElementById('weather-cond').textContent = 'Weather unavailable in this build';
+
+window.whisterSettings = {
+    onSettings(values) {
+        const theme = Number(values['browser.theme.color_scheme2']);
+        const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+        document.documentElement.dataset.theme = theme === 1 ? 'light' : theme === 2 ? 'dark' : prefersLight ? 'light' : 'dark';
+    }
+};
+if (window.chrome && typeof window.chrome.send === 'function') {
+    window.chrome.send('getSettings');
+}
+
+const customizationStorageKey = 'whister-newtab-customization';
+const wallpapers = ['dusk', 'aurora', 'ocean', 'grove', 'ember', 'rose', 'stone'];
+const accents = ['violet', 'cyan', 'mint', 'coral'];
+const visibilityDefaults = { greeting: true, clock: true, weather: true };
+const widgetIds = { greeting: 'greeting', clock: 'clock', weather: 'weather-card' };
+const customizeToggle = document.getElementById('customize-toggle');
+const customizePanel = document.getElementById('customize-panel');
+const customizeClose = document.getElementById('customize-close');
+const backgroundFile = document.getElementById('custom-background-file');
+const removeBackground = document.getElementById('remove-custom-background');
+const backgroundStatus = document.getElementById('background-status');
+
+function saveCustomization(value) {
     try {
-        let lat = 52.56; 
-        let lon = -1.82;
+        localStorage.setItem(customizationStorageKey, JSON.stringify(value));
+        return true;
+    } catch (error) {
+        backgroundStatus.textContent = 'This browser profile could not save the customization';
+        return false;
+    }
+}
 
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(async function(position) {
-                lat = position.coords.latitude;
-                lon = position.coords.longitude;
-                await pullWeatherData(lat, lon);
-            }, async function() {
-                await pullWeatherData(lat, lon); 
-            });
-        } else {
-            await pullWeatherData(lat, lon);
+function applyWallpaper(value) {
+    const wallpaper = wallpapers.includes(value) ? value : 'dusk';
+    document.documentElement.dataset.wallpaper = wallpaper;
+    document.querySelectorAll('[data-wallpaper-choice]').forEach(function(button) {
+        button.setAttribute('aria-pressed', String(button.dataset.wallpaperChoice === wallpaper));
+    });
+    return wallpaper;
+}
+
+function applyCustomBackground(photo) {
+    const validPhoto = typeof photo === 'string' &&
+        photo.length <= 1800000 &&
+        /^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(photo);
+    if (validPhoto) {
+        document.documentElement.style.setProperty('--custom-wallpaper', 'url("' + photo + '")');
+        document.documentElement.dataset.customBackground = 'true';
+        document.querySelectorAll('[data-wallpaper-choice]').forEach(function(button) {
+            button.setAttribute('aria-pressed', 'false');
+        });
+        removeBackground.hidden = false;
+        backgroundStatus.textContent = 'Photo saved only in this browser profile';
+        return photo;
+    }
+    document.documentElement.style.removeProperty('--custom-wallpaper');
+    delete document.documentElement.dataset.customBackground;
+    removeBackground.hidden = true;
+    backgroundStatus.textContent = 'Saved only in this browser profile';
+    return '';
+}
+
+function applyAccent(value) {
+    const accent = accents.includes(value) ? value : 'violet';
+    document.documentElement.dataset.accent = accent;
+    document.querySelectorAll('[data-accent-choice]').forEach(function(button) {
+        button.setAttribute('aria-pressed', String(button.dataset.accentChoice === accent));
+    });
+    return accent;
+}
+
+function openCustomization() {
+    customizePanel.hidden = false;
+    customizeToggle.setAttribute('aria-expanded', 'true');
+    customizeClose.focus();
+}
+
+function closeCustomization(returnFocus) {
+    customizePanel.hidden = true;
+    customizeToggle.setAttribute('aria-expanded', 'false');
+    if (returnFocus) customizeToggle.focus();
+}
+
+function initCustomization() {
+    let saved = {};
+    try {
+        saved = JSON.parse(localStorage.getItem(customizationStorageKey) || '{}');
+    } catch (error) {
+        saved = {};
+    }
+    if (!saved || typeof saved !== 'object') saved = {};
+
+    const state = {
+        wallpaper: applyWallpaper(saved.wallpaper),
+        accent: applyAccent(saved.accent),
+        visibility: Object.assign({}, visibilityDefaults, saved.visibility || {}),
+        photo: applyCustomBackground(saved.photo)
+    };
+
+    document.querySelectorAll('[data-visibility]').forEach(function(input) {
+        const key = input.dataset.visibility;
+        if (!Object.prototype.hasOwnProperty.call(visibilityDefaults, key)) return;
+        input.checked = state.visibility[key] !== false;
+        const widget = document.getElementById(widgetIds[key]);
+        if (widget) widget.hidden = !input.checked;
+        input.addEventListener('change', function() {
+            state.visibility[key] = input.checked;
+            if (widget) widget.hidden = !input.checked;
+            saveCustomization(state);
+        });
+    });
+
+    document.querySelectorAll('[data-wallpaper-choice]').forEach(function(button) {
+        button.addEventListener('click', function() {
+            state.wallpaper = applyWallpaper(button.dataset.wallpaperChoice);
+            state.photo = applyCustomBackground('');
+            applyWallpaper(state.wallpaper);
+            saveCustomization(state);
+        });
+    });
+
+    backgroundFile.addEventListener('change', function() {
+        const file = backgroundFile.files && backgroundFile.files[0];
+        if (!file) return;
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 12 * 1024 * 1024) {
+            backgroundStatus.textContent = 'Choose a JPG, PNG, or WebP image under 12 MB';
+            backgroundFile.value = '';
+            return;
         }
-    } catch (err) {
-        document.getElementById('weather-cond').textContent = "Offline";
-    }
+
+        const imageUrl = URL.createObjectURL(file);
+        const image = new Image();
+        image.onload = function() {
+            URL.revokeObjectURL(imageUrl);
+            if (image.width * image.height > 40000000) {
+                backgroundStatus.textContent = 'That image is too large to use here';
+                backgroundFile.value = '';
+                return;
+            }
+            const scale = Math.min(1, 1280 / image.width, 800 / image.height);
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(image.width * scale));
+            canvas.height = Math.max(1, Math.round(image.height * scale));
+            canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+            let photo = canvas.toDataURL('image/jpeg', 0.72);
+            if (photo.length > 1800000) photo = canvas.toDataURL('image/jpeg', 0.52);
+            if (photo.length > 1800000) {
+                backgroundStatus.textContent = 'Could not compress that image enough to save';
+                backgroundFile.value = '';
+                return;
+            }
+            state.photo = applyCustomBackground(photo);
+            saveCustomization(state);
+            backgroundFile.value = '';
+        };
+        image.onerror = function() {
+            URL.revokeObjectURL(imageUrl);
+            backgroundStatus.textContent = 'That image could not be opened';
+            backgroundFile.value = '';
+        };
+        image.src = imageUrl;
+    });
+
+    removeBackground.addEventListener('click', function() {
+        state.photo = applyCustomBackground('');
+        applyWallpaper(state.wallpaper);
+        saveCustomization(state);
+        backgroundFile.value = '';
+    });
+
+    document.querySelectorAll('[data-accent-choice]').forEach(function(button) {
+        button.addEventListener('click', function() {
+            state.accent = applyAccent(button.dataset.accentChoice);
+            saveCustomization(state);
+        });
+    });
+
+    customizeToggle.addEventListener('click', function() {
+        if (customizePanel.hidden) openCustomization();
+        else closeCustomization(false);
+    });
+    customizeClose.addEventListener('click', function() { closeCustomization(true); });
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && !customizePanel.hidden) closeCustomization(true);
+    });
+    document.addEventListener('pointerdown', function(event) {
+        if (!customizePanel.hidden && !customizePanel.contains(event.target) &&
+            !customizeToggle.contains(event.target)) {
+            closeCustomization(false);
+        }
+    });
 }
 
-async function pullWeatherData(lat, lon) {
-    const url = 'https://open-meteo.com' + lat + '&longitude=' + lon + '&current_weather=true';
-    const response = await fetch(url);
-    const data = await response.json();
-    
-    if (data && data.current_weather) {
-        const temp = Math.round(data.current_weather.temperature);
-        const code = data.current_weather.weathercode;
-        
-        let conditionText = "Clear Sky";
-        if (code > 0 && code <= 3) conditionText = "Partly Cloudy";
-        else if (code >= 45 && code <= 48) conditionText = "Foggy Conditions";
-        else if (code >= 51 && code <= 67) conditionText = "Rain Showers";
-        else if (code >= 71 && code <= 77) conditionText = "Snowfall";
-        else if (code >= 95) conditionText = "Thunderstorms";
-
-        document.getElementById('weather-temp').textContent = temp + '°C';
-        document.getElementById('weather-cond').textContent = conditionText;
-    }
-}
-fetchLiveWeather();
-setInterval(fetchLiveWeather, 900000);
+initCustomization();

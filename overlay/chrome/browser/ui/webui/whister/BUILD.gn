@@ -1,0 +1,26 @@
+source_set("whister") {
+  sources = [
+    "whister_settings_handler.cc",
+    "whister_settings_handler.h",
+    "whister_settings_ui.cc",
+    "whister_settings_ui.h",
+  ]
+  deps = [
+    "//base",
+    "//base/version_info",
+    "//chrome/browser:resources",
+    "//chrome/browser/extensions",
+    "//chrome/browser/profiles:profile",
+    "//chrome/browser/search_engines",
+    "//chrome/browser/ui/search_engines",
+    "//components/prefs",
+    "//components/search_engines",
+    "//content/public/browser",
+    "//content/public/common",
+    "//extensions/browser",
+    "//extensions/common",
+    "//url",
+    "//ui/base",
+    "//v8:v8_version",
+  ]
+}

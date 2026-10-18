@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Whister Settings</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+  <div class="glow" aria-hidden="true"></div>
+  <div class="layout">
+    <nav class="side">
+      <div class="brand"><span class="mark">W</span><span>Whister</span></div>
+      <a href="#search">Search</a>
+      <a href="#appearance">Appearance</a>
+      <a href="#startup">Startup</a>
+      <a href="#privacy">Privacy</a>
+      <a href="#autofill">Autofill</a>
+      <a href="#languages">Languages</a>
+      <a href="#downloads">Downloads</a>
+      <a href="#about">About</a>
+    </nav>
+    <main>
+      <header>
+        <div>
+          <h1>Make it yours.</h1>
+          <p class="sub">Whister keeps things simple. Tweak what matters, ignore the rest.</p>
+        </div>
+        <input id="filter" type="search" placeholder="Find a setting" autocomplete="off">
+      </header>
+
+      <section id="search">
+        <h2>Search</h2>
+        <div class="panel">
+          <label class="row"><span><b>Search engine</b><small>Used when you search from the address bar</small></span>
+            <select class="engine"></select></label>
+        </div>
+      </section>
+
+      <section id="appearance">
+        <h2>Appearance</h2>
+        <div class="panel">
+          <label class="row"><span><b>Theme</b><small>Follow your system, or pick a side</small></span>
+            <select data-key="browser.theme.color_scheme2" data-type="int">
+              <option value="0">Match my system</option>
+              <option value="1">Light</option>
+              <option value="2">Dark</option>
+            </select></label>
+          <label class="row"><span><b>Bookmarks bar</b><small>Keep your favourites one click away on every tab</small></span>
+            <input class="switch" type="checkbox" data-key="bookmark_bar.show_on_all_tabs"></label>
+          <label class="row"><span><b>Text size</b><small>How big words look on web pages</small></span>
+            <select data-key="webkit.webprefs.default_font_size" data-type="int">
+              <option value="12">Small</option>
+              <option value="16">Medium</option>
+              <option value="20">Large</option>
+              <option value="24">Very large</option>
+            </select></label>
+          <label class="row"><span><b>Fixed-width text size</b><small>Code blocks and plain-text pages</small></span>
+            <select data-key="webkit.webprefs.default_fixed_font_size" data-type="int">
+              <option value="12">Small</option>
+              <option value="16">Medium</option>
+              <option value="20">Large</option>
+              <option value="24">Very large</option>
+            </select></label>
+          <label class="row"><span><b>Smallest text allowed</b><small>Stops tiny print on pages from being unreadable</small></span>
+            <select data-key="webkit.webprefs.minimum_font_size" data-type="int">
+              <option value="0">No minimum</option>
+              <option value="9">Small</option>
+              <option value="12">Medium</option>
+              <option value="16">Large</option>
+            </select></label>
+        </div>
+      </section>
+
+      <section id="startup">
+        <h2>Startup</h2>
+        <div class="panel">
+          <label class="row"><span><b>When Whister wakes up</b><small>Start fresh or pick up where you left off</small></span>
+            <select data-key="session.restore_on_startup" data-type="int">
+              <option value="5">Open a fresh new tab</option>
+              <option value="1">Continue where I left off</option>
+            </select></label>
+          <label class="row"><span><b>Home button</b><small>One click back to your starting point</small></span>
+            <input class="switch" type="checkbox" data-key="browser.show_home_button"></label>
+          <label class="row"><span><b>Home is the new tab page</b><small>Turn off to use your own address</small></span>
+            <input class="switch" type="checkbox" data-key="homepage_is_newtabpage"></label>
+          <label class="row"><span><b>Home page address</b><small>Only used when the switch above is off</small></span>
+            <input type="text" data-key="homepage" placeholder="https://example.com"></label>
+        </div>
+      </section>
+
+      <section id="privacy">
+        <h2>Privacy</h2>
+        <div class="panel">
+          <label class="row"><span><b>Send "Do Not Track"</b><small>A polite request for sites to leave you alone</small></span>
+            <input class="switch" type="checkbox" data-key="enable_do_not_track"></label>
+          <label class="row"><span><b>Search suggestions</b><small>Ideas as you type in the address bar</small></span>
+            <input class="switch" type="checkbox" data-key="search.suggest_enabled"></label>
+          <label class="row"><span><b>Lost page helper</b><small>Suggest similar pages when one can't be found</small></span>
+            <input class="switch" type="checkbox" data-key="alternate_error_pages.enabled"></label>
+          <label class="row"><span><b>Safe Browsing</b><small>Warn me about dangerous sites and downloads</small></span>
+            <input class="switch" type="checkbox" data-key="safebrowsing.enabled"></label>
+        </div>
+      </section>
+
+      <section id="autofill">
+        <h2>Autofill</h2>
+        <div class="panel">
+          <label class="row"><span><b>Offer to save passwords</b><small>Remember logins so you don't have to</small></span>
+            <input class="switch" type="checkbox" data-key="credentials_enable_service"></label>
+          <label class="row"><span><b>Addresses</b><small>Fill in names and addresses with one click</small></span>
+            <input class="switch" type="checkbox" data-key="autofill.profile_enabled"></label>
+          <label class="row"><span><b>Payment methods</b><small>Fill in saved cards at checkout</small></span>
+            <input class="switch" type="checkbox" data-key="autofill.credit_card_enabled"></label>
+        </div>
+      </section>
+
+      <section id="languages">
+        <h2>Languages</h2>
+        <div class="panel">
+          <label class="row"><span><b>Spell check</b><small>Underline typos as you write</small></span>
+            <input class="switch" type="checkbox" data-key="browser.enable_spellchecking"></label>
+          <label class="row"><span><b>Offer to translate pages</b><small>Ask when a page is in another language</small></span>
+            <input class="switch" type="checkbox" data-key="translate.enabled"></label>
+        </div>
+      </section>
+
+      <section id="downloads">
+        <h2>Downloads</h2>
+        <div class="panel">
+          <label class="row"><span><b>Ask before saving</b><small>Choose a spot for every file</small></span>
+            <input class="switch" type="checkbox" data-key="download.prompt_for_download"></label>
+          <label class="row"><span><b>Open PDFs in your system viewer</b><small>Download PDFs instead of viewing them in Whister</small></span>
+            <input class="switch" type="checkbox" data-key="download.open_pdf_in_system_reader"></label>
+        </div>
+      </section>
+
+      <section id="about">
+        <h2>About</h2>
+        <div class="panel about">
+          <span class="mark big">W</span>
+          <div>
+            <b>Whister Browser <em class="tag">Beta</em></b>
+            <small>Fast, private and a little bit cheeky. Built in the open, one rebuild at a time.</small>
+          </div>
+        </div>
+
+        <h2>Updates</h2>
+        <div class="panel">
+          <div class="row static"><span><b>Manual updates</b><small>This is the way to get the latest build manually. for now...</small></span>
+            <a class="pill" href="https://whisterbeta.whisterbrowser.com/" data-webui-navigate>Get latest build</a></div>
+        </div>
+        
+<div class="panel">
+  <div class="row static">
+    <span>
+      <strong>Check for updates (automatic) <em class="tag">Beta</em></strong>
+      <small id="update-status-text">Whister is up to date.</small>
+    </span>
+    <button id="check-updates-btn" class="whister-btn-primary">Check version</button>
+  </div>
+</div>
+
+
+        <h2>Version details</h2>
+        <div class="panel">
+          <div class="row static"><span><b>Chromium version</b></span><code data-about="chromium">...</code></div>
+          <div class="row static"><span><b>Source revision</b></span><code data-about="revision">...</code></div>
+          <div class="row static"><span><b>V8 engine</b></span><code data-about="v8">...</code></div>
+          <div class="row static"><span><b>Platform</b></span><code data-about="os">...</code></div>
+          <div class="row static"><span><b>Architecture</b></span><code data-about="arch">...</code></div>
+          <div class="row static"><span><b>Build type</b></span><code data-about="build">...</code></div>
+          <div class="row static"><span><b>Profile folder</b></span><code data-about="profile">...</code></div>
+        </div>
+      </section>
+
+      <p id="empty" hidden>Nothing matches that. Try a different word.</p>
+    </main>
+  </div>
+  <script src="settings.js"></script>
+</body>
+</html>

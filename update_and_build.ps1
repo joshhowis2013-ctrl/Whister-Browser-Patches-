@@ -4,7 +4,8 @@
 param (
     [Parameter(Mandatory=$true)]
     [ValidateSet("stable", "beta")]
-    [string]$Channel
+    [string]$Channel,
+    [switch]$UseStockNewTab
 )
 
 # 1. CONFIGURE DIRECTORIES AND MILESTONE VERSIONS
@@ -12,11 +13,11 @@ $ChromiumSrcDir = "C:\chromium\src"
 $MyRepoDir = "C:\whister-browser"
 
 if ($Channel -eq "stable") {
-    $TargetChromiumVersion = "refs/tags/152.0.7977.65"
+    $TargetChromiumVersion = "refs/tags/154.0.8037.98"
     $BuildOutPath = "out\StableRelease"
     $ConfigFile = "$MyRepoDir\config\stable_args.gn"
 } else {
-    $TargetChromiumVersion = "refs/tags/155.0.8044.0"
+    $TargetChromiumVersion = "refs/tags/158.0.8105.0"
     $BuildOutPath = "out\BetaRelease"
     $ConfigFile = "$MyRepoDir\config\beta_args.gn"
 }
@@ -44,17 +45,40 @@ gclient sync --with_branch_heads --with_tags --jobs=4 --force --no-history
 
 # 4. APPLY LAYERED PATCH MODULES
 Write-Host ">>> Merging shared features..." -ForegroundColor Cyan
-$CommonPatches = Get-ChildItem -Path "$MyRepoDir\patches\common\*.patch" -ErrorAction SilentlyContinue
+$EnabledCommonPatchNames = @(
+    "custom_omnibox_placeholder.patch",
+    "degoogle_settings_interface.patch",
+    "theme_native_top_bar.patch",
+    "inject_whister_theme.patch",
+    "whister_settings_page.patch"
+)
+if (-not $UseStockNewTab) {
+    $EnabledCommonPatchNames += "whister_new_tab.patch"
+} else {
+    Write-Host ">>> Using Chromium's stock new-tab page as fallback." -ForegroundColor Yellow
+}
+$CommonPatches = foreach ($PatchName in $EnabledCommonPatchNames) {
+    $PatchPath = Join-Path "$MyRepoDir\patches\common" $PatchName
+    if (-not (Test-Path $PatchPath)) {
+        throw "Required compatible patch is missing: $PatchPath"
+    }
+    Get-Item $PatchPath
+}
+$DeferredCommonPatches = Get-ChildItem -Path "$MyRepoDir\patches\common\*.patch" -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -notin $EnabledCommonPatchNames }
+if ($DeferredCommonPatches) {
+    $DeferredNames = ($DeferredCommonPatches.Name -join ", ")
+    Write-Host ">>> Deferring unported patches: $DeferredNames" -ForegroundColor Yellow
+}
 $ChannelPatches = Get-ChildItem -Path "$MyRepoDir\patches\$Channel\*.patch" -ErrorAction SilentlyContinue
 
 # Layer A: Shared Code Base Modifications
 if ($CommonPatches) {
     foreach ($Patch in $CommonPatches) {
         Write-Host "Applying Base: $($Patch.Name)" -ForegroundColor Green
-        # Adding --3way allows Git to automatically resolve microscopic formatting anomalies
-        git apply --3way "$($Patch.FullName)"
+        git apply --unidiff-zero --recount --ignore-space-change "$($Patch.FullName)"
         if ($LASTEXITCODE -ne 0) {
-            Write-Host "Warning: Patch $($Patch.Name) failed to merge cleanly. Skipping to avoid build locks." -ForegroundColor Yellow
+            throw "Patch $($Patch.Name) failed to apply. Stopping so an incomplete Whister build is not produced."
         }
     }
 }
@@ -63,9 +87,9 @@ if ($CommonPatches) {
 if ($ChannelPatches) {
     foreach ($Patch in $ChannelPatches) {
         Write-Host "Applying $Channel Edge: $($Patch.Name)" -ForegroundColor Green
-        git apply --3way "$($Patch.FullName)"
+        git apply --unidiff-zero --recount --ignore-space-change "$($Patch.FullName)"
         if ($LASTEXITCODE -ne 0) {
-            Write-Host "Warning: Patch $($Patch.Name) failed to merge cleanly. Skipping to avoid build locks." -ForegroundColor Yellow
+            throw "Patch $($Patch.Name) failed to apply. Stopping so an incomplete Whister build is not produced."
         }
     }
 }
@@ -79,6 +103,24 @@ if (Test-Path $CustomAssetsDir) {
     Copy-Item -Path "$CustomAssetsDir\*.*" -Destination $GoogleThemeDir -Force
 }
 
+$WhisterNewTabSrc = "$MyRepoDir\branding\common\new_tab_page"
+$WhisterNewTabDest = "$ChromiumSrcDir\chrome\browser\resources\whister_new_tab"
+New-Item -ItemType Directory -Path $WhisterNewTabDest -Force | Out-Null
+foreach ($FileName in @("settings.html", "settings.css", "settings.js", "setup.html", "index.html", "style.css", "app.js")) {
+    $SourceFile = Join-Path $WhisterNewTabSrc $FileName
+    if (-not (Test-Path $SourceFile)) {
+        throw "Required Whister settings asset is missing: $SourceFile"
+    }
+    Copy-Item -Path $SourceFile -Destination $WhisterNewTabDest -Force
+}
+
+if (-not $UseStockNewTab) {
+    Write-Host ">>> Whister new-tab UI staged for chrome://newtab." -ForegroundColor Green
+}
+
+# Copy new Whister source files (settings WebUI) into the tree.
+Copy-Item -Path "$MyRepoDir\overlay\*" -Destination $ChromiumSrcDir -Recurse -Force
+
 # 5. DYNAMICALLY CREATE OUTPUT FOLDER AND INJECT THE ARGS FILE
 Write-Host ">>> Injecting configuration args profile..." -ForegroundColor Cyan
 $FullOutDirectory = "$ChromiumSrcDir\$BuildOutPath"
@@ -86,16 +128,20 @@ $FullOutDirectory = "$ChromiumSrcDir\$BuildOutPath"
 if (-not (Test-Path $FullOutDirectory)) {
     New-Item -ItemType Directory -Path $FullOutDirectory | Out-Null
 }
-# Inject Native uBlock Origin policy configurations
-$ExtensionSrc = "$MyRepoDir\branding\common\extensions\cjpalhdlnbpafiamejdnhcphjbkeiagm.json"
-$ExtensionDestDir = "$ChromiumSrcDir\$BuildOutPath\default_apps"
+$ExtensionId = "ddkjiahejlhfcafbddmgiahcphecmpfh"
+$ExtensionDestDir = "$ChromiumSrcDir\$BuildOutPath\extensions"
+$LegacyExtensionManifests = @(
+    "$ChromiumSrcDir\$BuildOutPath\default_apps\cjpalhdlnbpafiamejdnhcphjbkeiagm.json",
+    "$ChromiumSrcDir\$BuildOutPath\default_apps\$ExtensionId.json",
+    "$ExtensionDestDir\cjpalhdlnbpafiamejdnhcphjbkeiagm.json",
+    "$ExtensionDestDir\$ExtensionId.json"
+)
 
-if (-not (Test-Path $ExtensionDestDir)) {
-    New-Item -ItemType Directory -Path $ExtensionDestDir | Out-Null
+foreach ($LegacyManifest in $LegacyExtensionManifests) {
+    if (Test-Path $LegacyManifest) {
+        Remove-Item $LegacyManifest -Force
+    }
 }
-
-Copy-Item -Path $ExtensionSrc -Destination $ExtensionDestDir -Force
-Write-Host ">>> Built-in uBlock Origin profile staged for deployment." -ForegroundColor Green
 
 # Copy the corresponding .gn file directly into the compilation target root
 Copy-Item -Path $ConfigFile -Destination "$FullOutDirectory\args.gn" -Force
