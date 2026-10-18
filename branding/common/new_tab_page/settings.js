@@ -1,3 +1,7 @@
+
+
+
+
 const filter = document.getElementById('filter');
 const empty = document.getElementById('empty');
 const items = Array.from(document.querySelectorAll('.card, .row'));
@@ -91,8 +95,56 @@ window.whisterSettings = {
       button.innerText = "Retry Check";
       statusText.innerText = "Failed to access local patch target files.";
     }
-  }
+  },
 
+  onWhisterUpdateResult(status, details) {
+    const button = document.getElementById('check-updates-btn');
+    const statusText = document.getElementById('update-status-text');
+    if (!button || !statusText) return;
+
+    // Turn off the spinning loader ring animation instantly
+    button.classList.remove('loading');
+
+    switch (status) {
+      case 'noupdate':
+        button.innerText = "Check version";
+        statusText.innerText = "Whister is completely up to date.";
+        break;
+
+      case 'patch_available':
+        button.innerText = "Apply Patch";
+        statusText.innerHTML = `Smart Update Ready: Source patch <code>${details}</code> discovered.`;
+        
+        // Arm the button to trigger the smart download phase on next click
+        button.onclick = () => {
+          button.classList.add('loading');
+          statusText.innerText = "Downloading unified source diff files...";
+          sendMessage('executeSmartWhisterDownload', [details]);
+        };
+        break;
+
+      case 'download_failed':
+        button.innerText = "Retry Check";
+        statusText.innerText = "Error: File download interrupted or stream corrupted.";
+        break;
+
+      case 'network_error':
+        button.innerText = "Retry Check";
+        statusText.innerText = "Error: Could not establish a connection to ://whisterbrowser.com.";
+        break;
+
+      case 'success':
+        button.innerText = "Almost Done";
+        button.disabled = true;
+        statusText.innerText = "Restart whister to complete the update.";
+        break;
+
+      default:
+        button.innerText = "Check version";
+        statusText.innerText = "System error encountered during update validation pass.";
+        break;
+    }
+  }
 };
 
 for (const el of controls) {

@@ -6,6 +6,8 @@
 #include "base/callback_list.h"
 #include "base/values.h"
 #include "content/public/browser/web_ui_message_handler.h"
+#include "services/network/public/cpp/simple_url_loader.h"
+#include "services/network/public/cpp/shared_url_loader_factory.h"
 
 class KeywordEditorController;
 
@@ -33,9 +35,16 @@ class WhisterSettingsHandler : public content::WebUIMessageHandler {
   void HandleNavigateToUrl(const base::ListValue& args);
   void SendSettings();
   void SendSearchEngines();
+  void TriggerServerUpdateCheck(const base::ListValue& args);
+  void OnServerResponseReceived(std::optional<std::string> response_body);
+  void HandleSmartDownloadExecution(const base::ListValue& args);
+  void OnSmartPayloadDownloaded(const base::FilePath& target_path, base::FilePath output_file_path);
+
+
 
   base::CallbackListSubscription loaded_subscription_;
   std::unique_ptr<KeywordEditorController> list_controller_;
+  std::unique_ptr<network::SimpleURLLoader> url_loader_;
 };
 
 }  // namespace whister
