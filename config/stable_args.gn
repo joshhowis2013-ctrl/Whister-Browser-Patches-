@@ -9,7 +9,6 @@ ffmpeg_branding = "Chrome"
 chrome_pgo_phase = 0
 
 # --- Privacy Hardening & Anti-Telemetry ---
-enable_google_now = false
 enable_one_click_signin = false
 enable_reporting = false
 enable_mdns = false
@@ -20,5 +19,5 @@ use_official_google_api_keys = false
 # We allow the files to compile so dependencies resolve, but we disable the cloud engines
 safe_browsing_mode = 1
 safe_browsing_use_locally_built_blocklists = false
-optimize_webui = false
-load_webui_from_disk = true
+optimize_webui = true
+load_webui_from_disk = false

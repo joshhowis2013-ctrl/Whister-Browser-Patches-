@@ -1,0 +1,2 @@
+C:\whister-browser\dist\animated-publish\WhisterAnimatedSetup.pdb
+C:\whister-browser\dist\animated-publish\WhisterAnimatedSetup.exe

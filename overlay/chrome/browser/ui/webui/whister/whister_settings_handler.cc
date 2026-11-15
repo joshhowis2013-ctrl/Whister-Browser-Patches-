@@ -1,8 +1,13 @@
 #include "chrome/browser/ui/webui/whister/whister_settings_handler.h"
+#include <array>
+#include <algorithm>
+#include <string_view>
+
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/browser/web_contents.h"
 #include "base/files/file_util.h"
+#include "base/files/file.h"
 #include "base/command_line.h"
 #include "base/process/launch.h"
 
@@ -12,13 +17,18 @@
 #include "base/functional/bind.h"
 #include "base/files/file_path.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/strings/string_number_conversions.h"
+#include "base/strings/string_util.h"
+#include "base/version.h"
 #include "base/version_info/version_info.h"
-#include "chrome/browser/extensions/external_provider_manager.h"
-#include "chrome/browser/extensions/updater/extension_updater.h"
+#include "chrome/browser/bookmarks/bookmark_model_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/ui/search_engines/keyword_editor_controller.h"
+#include "components/bookmarks/browser/bookmark_model.h"
+#include "components/bookmarks/browser/bookmark_node.h"
 #include "components/prefs/pref_service.h"
+#include "crypto/secure_hash.h"
 #include "components/search_engines/choice_made_location.h"
 #include "components/search_engines/template_url.h"
 #include "components/search_engines/template_url_service.h"
@@ -39,7 +49,70 @@ namespace whister {
 
     namespace {
 
-        enum class Type { kBool, kString, kInt };
+    constexpr char kUpdateManifestUrl[] =
+        "https://beta-updates.whisterbrowser.com/win/beta/manifest.json";
+    constexpr char kUpdateHost[] = "beta-updates.whisterbrowser.com";
+    constexpr int64_t kMaximumInstallerSize = 1024LL * 1024 * 1024;
+    constexpr size_t kMaximumBookmarks = 12;
+
+    bool IsValidSha256(std::string_view value) {
+        return value.size() == 64 &&
+               std::all_of(value.begin(), value.end(),
+                           [](char character) {
+                               return base::IsHexDigit(character);
+                           });
+    }
+
+    void AppendBookmarks(const bookmarks::BookmarkNode* folder,
+                         base::ListValue* output,
+                         size_t depth = 0) {
+        if (depth > 16) {
+            return;
+        }
+        for (const auto& child : folder->children()) {
+            if (output->size() >= kMaximumBookmarks) {
+                return;
+            }
+            if (child->is_url()) {
+                const GURL& url = child->url();
+                if (!url.SchemeIsHTTPOrHTTPS()) {
+                    continue;
+                }
+                base::DictValue bookmark;
+                bookmark.Set("title", base::UTF16ToUTF8(child->GetTitle()));
+                bookmark.Set("url", url.spec());
+                output->Append(std::move(bookmark));
+            } else {
+                AppendBookmarks(child.get(), output, depth + 1);
+            }
+        }
+    }
+
+    std::optional<std::string> HashFileSha256(const base::FilePath& path) {
+        base::File file(path, base::File::FLAG_OPEN | base::File::FLAG_READ);
+        if (!file.IsValid()) {
+            return std::nullopt;
+        }
+
+        auto hash = crypto::SecureHash::Create(crypto::SecureHash::SHA256);
+        std::array<uint8_t, 64 * 1024> buffer;
+        while (true) {
+            const std::optional<size_t> bytes_read = file.ReadAtCurrentPos(buffer);
+            if (!bytes_read.has_value()) {
+                return std::nullopt;
+            }
+            if (*bytes_read == 0) {
+                break;
+            }
+            hash->Update(base::span(buffer).first(*bytes_read));
+        }
+
+        std::array<uint8_t, 32> digest;
+        hash->Finish(digest);
+        return base::HexEncodeLower(digest);
+    }
+
+            enum class Type { kBool, kString, kInt };
 
         struct Setting {
             const char* key;
@@ -108,21 +181,27 @@ namespace whister {
             base::BindRepeating(&WhisterSettingsHandler::HandleSetSearchEngine,
                 base::Unretained(this)));
         web_ui()->RegisterMessageCallback(
-            "installUblockLite",
-            base::BindRepeating(&WhisterSettingsHandler::HandleInstallUblockLite,
-                base::Unretained(this)));
-        web_ui()->RegisterMessageCallback(
             "navigateToUrl",
             base::BindRepeating(&WhisterSettingsHandler::HandleNavigateToUrl,
                 base::Unretained(this)));
         web_ui()->RegisterMessageCallback(
-            "triggerWhisterServerUpdateCheck",
-            base::BindRepeating(&WhisterSettingsHandler::TriggerServerUpdateCheck,
+            "checkWhisterUpdates",
+            base::BindRepeating(&WhisterSettingsHandler::CheckForUpdates,
                 base::Unretained(this)));
 
         web_ui()->RegisterMessageCallback(
-            "executeSmartWhisterDownload",
-            base::BindRepeating(&WhisterSettingsHandler::HandleSmartDownloadExecution,
+            "downloadAndVerifyWhisterUpdate",
+            base::BindRepeating(
+                &WhisterSettingsHandler::DownloadAndVerifyUpdate,
+                base::Unretained(this)));
+        web_ui()->RegisterMessageCallback(
+            "installVerifiedWhisterUpdate",
+            base::BindRepeating(
+                &WhisterSettingsHandler::InstallVerifiedUpdate,
+                base::Unretained(this)));
+        web_ui()->RegisterMessageCallback(
+            "getBookmarks",
+            base::BindRepeating(&WhisterSettingsHandler::HandleGetBookmarks,
                 base::Unretained(this)));
     }
 
@@ -133,47 +212,26 @@ namespace whister {
             return;
         }
         GURL url(args[0].GetString());
-        if (!url.is_valid() || !url.SchemeIsHTTPOrHTTPS()) {
+        const bool allowed_internal_page =
+            (url.SchemeIs("chrome") &&
+             (url.host() == "whister-settings" ||
+              (url.host() == "settings" && url.path() == "/"))) ||
+            (url.SchemeIs("chrome-extension") &&
+             url.host() == "hoganoibjngfmjnnniladdmgmkkigmaj" &&
+             url.path() == "/dashboard.html") ||
+            (url.SchemeIs("whister") &&
+             (url.host() == "settings" || url.host() == "newtab" ||
+              url.host() == "setup" || url.host() == "whister-settings" ||
+              url.host() == "whister-setup"));
+        if (!url.is_valid() ||
+            (!url.SchemeIsHTTPOrHTTPS() && !allowed_internal_page)) {
             return;
         }
         web_ui()->GetWebContents()->OpenURL(
             content::OpenURLParams::CreateBrowserInitiated(
-                url, WindowOpenDisposition::CURRENT_TAB,
+                url, WindowOpenDisposition::kCurrentTab,
                 ui::PAGE_TRANSITION_TYPED),
             /*navigation_handle_callback=*/{});
-    }
-
-    void WhisterSettingsHandler::HandleInstallUblockLite(
-        const base::ListValue& args) {
-        constexpr char kExtensionId[] = "ddkjiahejlhfcafbddmgiahcphecmpfh";
-        constexpr char kUpdateUrl[] =
-            "https://clients2.google.com/service/update2/crx";
-        bool request_started = false;
-
-        if (args.size() == 1 && args[0].is_bool() && args[0].GetBool()) {
-            Profile* profile = Profile::FromWebUI(web_ui());
-            auto* provider_manager =
-                extensions::ExternalProviderManager::Get(profile);
-            auto* updater = extensions::ExtensionUpdater::Get(profile);
-            if (provider_manager && updater && updater->enabled()) {
-                extensions::ExternalInstallInfoUpdateUrl install_info(
-                    kExtensionId, std::string(), GURL(kUpdateUrl),
-                    extensions::mojom::ManifestLocation::kExternalPrefDownload,
-                    extensions::Extension::NO_FLAGS,
-                    /*mark_acknowledged=*/false);
-                request_started = provider_manager->OnExternalExtensionUpdateUrlFound(
-                    install_info, /*force_update=*/false);
-                if (request_started) {
-                    extensions::ExtensionUpdater::CheckParams params;
-                    params.ids.push_back(kExtensionId);
-                    params.install_immediately = true;
-                    updater->CheckNow(std::move(params));
-                }
-            }
-        }
-
-        web_ui()->CallJavascriptFunctionUnsafe(
-            "whisterSettings.onUblockInstallRequested", request_started);
     }
 
     void WhisterSettingsHandler::HandleGetAboutInfo(const base::ListValue& args) {
@@ -307,141 +365,288 @@ namespace whister {
         web_ui()->CallJavascriptFunctionUnsafe("whisterSettings.onSettings", out);
     }
 
-    void WhisterSettingsHandler::TriggerServerUpdateCheck(const base::ListValue& args) {
-        auto resource_request = std::make_unique<network::ResourceRequest>();
+    void WhisterSettingsHandler::HandleGetBookmarks(
+        const base::ListValue& args) {
+        AllowJavascript();
+        bookmarks::BookmarkModel* model =
+            BookmarkModelFactory::GetForBrowserContext(
+                Profile::FromWebUI(web_ui()));
+        if (!model) {
+            web_ui()->CallJavascriptFunctionUnsafe(
+                "whisterSettings.onBookmarks",
+                base::Value(base::ListValue()));
+            return;
+        }
+        if (!model->loaded()) {
+            bookmarks_request_pending_ = true;
+            bookmark_model_observation_.Observe(model);
+            return;
+        }
+        SendBookmarks();
+    }
 
-        // Direct, exact URL mapping alignment targeting your live endpoint
-        resource_request->url = GURL("https://beta-updates.whisterbrowser.com/UPDATES/MINI-installer");
-        resource_request->method = "POST";
-        resource_request->credentials_mode = network::mojom::CredentialsMode::kOmit;
+    void WhisterSettingsHandler::SendBookmarks() {
+        bookmarks::BookmarkModel* model =
+            BookmarkModelFactory::GetForBrowserContext(
+                Profile::FromWebUI(web_ui()));
+        base::ListValue bookmarks;
+        if (model && model->loaded()) {
+            AppendBookmarks(model->bookmark_bar_node(), &bookmarks);
+            if (bookmarks.size() < kMaximumBookmarks) {
+                AppendBookmarks(model->other_node(), &bookmarks);
+            }
+            if (bookmarks.size() < kMaximumBookmarks) {
+                AppendBookmarks(model->mobile_node(), &bookmarks);
+            }
+            if (bookmarks.size() < kMaximumBookmarks &&
+                model->account_bookmark_bar_node()) {
+                AppendBookmarks(model->account_bookmark_bar_node(), &bookmarks);
+            }
+            if (bookmarks.size() < kMaximumBookmarks &&
+                model->account_other_node()) {
+                AppendBookmarks(model->account_other_node(), &bookmarks);
+            }
+            if (bookmarks.size() < kMaximumBookmarks &&
+                model->account_mobile_node()) {
+                AppendBookmarks(model->account_mobile_node(), &bookmarks);
+            }
+        }
+        web_ui()->CallJavascriptFunctionUnsafe(
+            "whisterSettings.onBookmarks", bookmarks);
+    }
 
-        // Smart Version Detection: Automatically injects your true engine build version dynamically!
-        std::string active_version = std::string(version_info::GetVersionNumber());
-        std::string request_body = "{\"version\": \"" + active_version + "\"}";
+    void WhisterSettingsHandler::BookmarkModelLoaded(bool ids_reassigned) {
+        if (!bookmarks_request_pending_) {
+            return;
+        }
+        bookmarks_request_pending_ = false;
+        bookmark_model_observation_.Reset();
+        SendBookmarks();
+    }
+
+    void WhisterSettingsHandler::OnJavascriptDisallowed() {
+        bookmarks_request_pending_ = false;
+        bookmark_model_observation_.Reset();
+    }
+
+    void WhisterSettingsHandler::CheckForUpdates(
+        const base::ListValue& args) {
+        available_update_.reset();
+        if (!verified_installer_path_.empty()) {
+            base::DeleteFile(verified_installer_path_);
+        }
+        verified_installer_path_ = base::FilePath();
+        auto request = std::make_unique<network::ResourceRequest>();
+        request->url = GURL(kUpdateManifestUrl);
+        request->method = "GET";
+        request->credentials_mode = network::mojom::CredentialsMode::kOmit;
+        request->redirect_mode = network::mojom::RedirectMode::kError;
 
         url_loader_ = network::SimpleURLLoader::Create(
-            std::move(resource_request),
-            net::DefineNetworkTrafficAnnotation("whister_updater", R"(
-          semantics {
-            sender: "Whister Browser Updater"
-            description: "Checks ://whisterbrowser.com for source patches."
-            trigger: "User clicks check updates button in Whister UI settings."
-            data: "Current version string."
-            destination: OTHER
-          }
-          policy {
-            cookies_allowed: NO
-          })"));
-
-        url_loader_->AttachStringForUpload(request_body, "application/json");
-
+            std::move(request),
+            net::DefineNetworkTrafficAnnotation("whister_update_manifest", R"(
+              semantics {
+                sender: "Whister Browser Update Check"
+                description: "Checks the beta update manifest for a newer release."
+                trigger: "The user selects Check for updates in Whister Settings."
+                data: "No user data. The request retrieves public release metadata."
+                destination: OTHER
+              }
+              policy {
+                cookies_allowed: NO
+                setting: "This request is initiated by the user."
+                policy_exception_justification: "The beta update manifest is hosted by Whister."
+              })"));
         url_loader_->DownloadToString(
-            web_ui()->GetWebContents()->GetBrowserContext()->GetDefaultStoragePartition()->GetURLLoaderFactoryForBrowserProcess().get(),
-            base::BindOnce(&WhisterSettingsHandler::OnServerResponseReceived,
-                base::Unretained(this)),
-            1024 * 1024); // 1MB buffer cap
+            web_ui()
+                ->GetWebContents()
+                ->GetBrowserContext()
+                ->GetDefaultStoragePartition()
+                ->GetURLLoaderFactoryForBrowserProcess()
+                .get(),
+            base::BindOnce(&WhisterSettingsHandler::OnUpdateManifestDownloaded,
+                           base::Unretained(this)),
+            64 * 1024);
     }
 
-    void WhisterSettingsHandler::OnServerResponseReceived(std::optional<std::string> response_body) {
-        // Catch-all Error State 1: Network timed out or host unreachable
-        if (!response_body.has_value()) {
-            web_ui()->CallJavascriptFunctionUnsafe("whisterSettings.onWhisterUpdateResult",
-                base::Value("network_error"), base::Value(""));
+    void WhisterSettingsHandler::OnUpdateManifestDownloaded(
+        std::optional<std::string> response_body) {
+        if (!response_body) {
+            web_ui()->CallJavascriptFunctionUnsafe(
+                "whisterSettings.onUpdateCheckResult",
+                base::Value("error"), base::Value(""), base::Value(""),
+                base::Value(""), base::Value(0));
             return;
         }
 
-        auto root = base::JSONReader::Read(*response_body, 0);
-        if (root.has_value() && root->is_dict()) {
-            const std::string* status = root->GetDict().FindString("status");
-            const std::string* target_file = root->GetDict().FindString("url");
+        std::optional<base::Value> parsed =
+            base::JSONReader::Read(*response_body, 0);
+        const base::DictValue* manifest =
+            parsed ? parsed->GetIfDict() : nullptr;
+        const base::DictValue* installer =
+            manifest ? manifest->FindDict("installer") : nullptr;
+        const std::string* channel =
+            manifest ? manifest->FindString("channel") : nullptr;
+        const std::string* version =
+            manifest ? manifest->FindString("version") : nullptr;
+        const std::string* url =
+            installer ? installer->FindString("url") : nullptr;
+        const std::string* sha256 =
+            installer ? installer->FindString("sha256") : nullptr;
+        const std::optional<int> size =
+            installer ? installer->FindInt("size") : std::nullopt;
+        const std::optional<int> schema_version =
+            manifest ? manifest->FindInt("schemaVersion") : std::nullopt;
 
-            if (status && target_file) {
-                // If a patch file or installer stub is matched, pass the target filename to the page layer
-                web_ui()->CallJavascriptFunctionUnsafe("whisterSettings.onWhisterUpdateResult",
-                    base::Value(*status), base::Value(*target_file));
-                return;
-            }
-        }
-
-        // Catch-all Error State 2: Bad JSON formatting or broken schema response from host
-        web_ui()->CallJavascriptFunctionUnsafe("whisterSettings.onWhisterUpdateResult",
-            base::Value("network_error"), base::Value(""));
-    }
-
-    void WhisterSettingsHandler::HandleSmartDownloadExecution(const base::ListValue& args) {
-        if (args.size() != 1 || !args[0].is_string()) {
-            web_ui()->CallJavascriptFunctionUnsafe("whisterSettings.onWhisterUpdateResult", base::Value("error"), base::Value(""));
-            return;
-        }
-        std::string file_download_url = args[0].GetString();
-
-        base::FilePath system_temp_dir;
-        if (base::GetTempDir(&system_temp_dir)) {
-            // Deduce file type extension cleanly from incoming URL path strings dynamically
-            std::string extension = (file_download_url.find(".patch") != std::string::npos) ? "whister_update.patch" : "whister_mini_installer.exe";
-            base::FilePath target_download_path = system_temp_dir.AppendASCII(extension);
-
-            auto config_request = std::make_unique<network::ResourceRequest>();
-            config_request->url = GURL(file_download_url);
-            config_request->method = "GET";
-
-            url_loader_ = network::SimpleURLLoader::Create(std::move(config_request), net::DefineNetworkTrafficAnnotation("whister_payload_pull", ""));
-
-            
-            
-            // Supplying the target path as the third argument satisfies the loader's method signature
-            url_loader_->DownloadToFile(
-                web_ui()->GetWebContents()->GetBrowserContext()->GetDefaultStoragePartition()->GetURLLoaderFactoryForBrowserProcess().get(),
-                base::BindOnce(&WhisterSettingsHandler::OnSmartPayloadDownloaded,
-                    base::Unretained(this), target_download_path),
-                target_download_path); 
-
-
-               
-        }
-    }
-
-    void WhisterSettingsHandler::OnSmartPayloadDownloaded(const base::FilePath& target_path, base::FilePath output_file_path) {
-        // Catch-all Error State 3: Download dropped mid-stream or storage folder full
-        if (output_file_path.empty() || !base::PathExists(output_file_path)) {
-            web_ui()->CallJavascriptFunctionUnsafe("whisterSettings.onWhisterUpdateResult",
-                base::Value("download_failed"), base::Value(""));
+        GURL installer_url(url ? *url : std::string());
+        const base::Version latest_version(version ? *version : std::string());
+        const base::Version current_version(version_info::GetVersionNumber());
+        if (!manifest || !installer || !channel || *channel != "beta" ||
+            !schema_version || *schema_version != 1 || !version ||
+            !latest_version.IsValid() || !current_version.IsValid() || !url ||
+            !installer_url.SchemeIs("https") ||
+            installer_url.host() != kUpdateHost || !sha256 ||
+            !IsValidSha256(*sha256) || !size || *size <= 0 ||
+            *size > kMaximumInstallerSize ||
+            installer_url.path() !=
+                "/win/beta/WhisterSetup-" + *version + ".exe") {
+            web_ui()->CallJavascriptFunctionUnsafe(
+                "whisterSettings.onUpdateCheckResult",
+                base::Value("error"), base::Value(""), base::Value(""),
+                base::Value(""), base::Value(0));
             return;
         }
 
-        std::string path_string = output_file_path.AsUTF8Unsafe();
-
-        // If it's a structural .patch file asset loop, apply it to the workspace source directories
-        if (path_string.find(".patch") != std::string::npos) {
-            base::CommandLine git_command(base::FilePath(FILE_PATH_LITERAL("git")));
-            git_command.AppendArg("apply");
-            git_command.AppendArg(path_string);
-
-            base::LaunchOptions options;
-            options.start_hidden = true;
-            base::Process process = base::LaunchProcess(git_command, options);
-            if (process.IsValid()) {
-                web_ui()->CallJavascriptFunctionUnsafe("whisterSettings.onWhisterUpdateResult", base::Value("success"), base::Value(""));
-                return;
-            }
+        const bool update_available =
+            latest_version.CompareTo(current_version) > 0;
+        if (update_available) {
+            available_update_ = UpdateInfo{*version, *url,
+                                           base::ToLowerASCII(*sha256), *size};
         }
-        // If it's a compiled mini_installer binary asset stub, deploy it silently
-        else {
-            base::CommandLine install_command(output_file_path);
-            install_command.AppendArg("/S");
-            install_command.AppendArg("--silent");
+        const char* status =
+            update_available ? "update_available" : "up_to_date";
+        web_ui()->CallJavascriptFunctionUnsafe(
+            "whisterSettings.onUpdateCheckResult", base::Value(status),
+            base::Value(*version), base::Value(*url),
+            base::Value(base::ToLowerASCII(*sha256)), base::Value(*size));
+    }
 
-            base::LaunchOptions options;
-            options.start_hidden = true;
-            base::Process process = base::LaunchProcess(install_command, options);
-            if (process.IsValid()) {
-                web_ui()->CallJavascriptFunctionUnsafe("whisterSettings.onWhisterUpdateResult", base::Value("success"), base::Value(""));
-                return;
-            }
+    void WhisterSettingsHandler::DownloadAndVerifyUpdate(
+        const base::ListValue& args) {
+        if (!available_update_) {
+            web_ui()->CallJavascriptFunctionUnsafe(
+                "whisterSettings.onUpdateDownloadResult",
+                base::Value("error"), base::Value(""), base::Value(""));
+            return;
         }
 
-        // Catch-all Error State 4: Local utility process execution execution failed
-        web_ui()->CallJavascriptFunctionUnsafe("whisterSettings.onWhisterUpdateResult", base::Value("error"), base::Value(""));
+        base::FilePath temp_dir;
+        if (!base::GetTempDir(&temp_dir)) {
+            web_ui()->CallJavascriptFunctionUnsafe(
+                "whisterSettings.onUpdateDownloadResult",
+                base::Value("error"), base::Value(""), base::Value(""));
+            return;
+        }
+        const base::FilePath installer_path = temp_dir.AppendASCII(
+            "WhisterSetup-" + available_update_->version + ".exe");
+        base::DeleteFile(installer_path);
+
+        auto request = std::make_unique<network::ResourceRequest>();
+        request->url = GURL(available_update_->url);
+        request->method = "GET";
+        request->credentials_mode = network::mojom::CredentialsMode::kOmit;
+        request->redirect_mode = network::mojom::RedirectMode::kError;
+        url_loader_ = network::SimpleURLLoader::Create(
+            std::move(request),
+            net::DefineNetworkTrafficAnnotation("whister_verified_installer", R"(
+              semantics {
+                sender: "Whister Browser Update Download"
+                description: "Downloads a release selected by the user for SHA-256 verification."
+                trigger: "The user selects Download and verify in Whister Settings."
+                data: "No user data. The request downloads the public installer."
+                destination: OTHER
+              }
+              policy {
+                cookies_allowed: NO
+                setting: "This download is initiated by the user."
+                policy_exception_justification: "The beta installer is hosted by Whister."
+              })"));
+        url_loader_->DownloadToFile(
+            web_ui()
+                ->GetWebContents()
+                ->GetBrowserContext()
+                ->GetDefaultStoragePartition()
+                ->GetURLLoaderFactoryForBrowserProcess()
+                .get(),
+            base::BindOnce(&WhisterSettingsHandler::OnUpdateDownloaded,
+                           base::Unretained(this), installer_path),
+            installer_path, available_update_->size);
+        web_ui()->CallJavascriptFunctionUnsafe(
+            "whisterSettings.onUpdateDownloadResult",
+            base::Value("downloading"), base::Value(""), base::Value(""));
+    }
+
+    void WhisterSettingsHandler::OnUpdateDownloaded(
+        const base::FilePath& path,
+        base::FilePath output_path) {
+        if (!available_update_ || output_path.empty() ||
+            output_path != path ||
+            base::GetFileSize(path) != available_update_->size) {
+            base::DeleteFile(path);
+            web_ui()->CallJavascriptFunctionUnsafe(
+                "whisterSettings.onUpdateDownloadResult",
+                base::Value("error"), base::Value(""), base::Value(""));
+            return;
+        }
+
+        const std::optional<std::string> hash = HashFileSha256(path);
+        if (!hash || *hash != available_update_->sha256) {
+            base::DeleteFile(path);
+            web_ui()->CallJavascriptFunctionUnsafe(
+                "whisterSettings.onUpdateDownloadResult",
+                base::Value("checksum_mismatch"), base::Value(""),
+                base::Value(available_update_->sha256));
+            return;
+        }
+
+        verified_installer_path_ = path;
+        web_ui()->CallJavascriptFunctionUnsafe(
+            "whisterSettings.onUpdateDownloadResult",
+            base::Value("verified"), base::Value(available_update_->version),
+            base::Value(*hash));
+    }
+
+    void WhisterSettingsHandler::InstallVerifiedUpdate(
+        const base::ListValue& args) {
+        if (!available_update_ || verified_installer_path_.empty() ||
+            base::GetFileSize(verified_installer_path_) !=
+                available_update_->size) {
+            web_ui()->CallJavascriptFunctionUnsafe(
+                "whisterSettings.onUpdateDownloadResult",
+                base::Value("error"), base::Value(""), base::Value(""));
+            return;
+        }
+        const std::optional<std::string> hash =
+            HashFileSha256(verified_installer_path_);
+        if (!hash || *hash != available_update_->sha256) {
+            base::DeleteFile(verified_installer_path_);
+            verified_installer_path_.clear();
+            web_ui()->CallJavascriptFunctionUnsafe(
+                "whisterSettings.onUpdateDownloadResult",
+                base::Value("checksum_mismatch"), base::Value(""),
+                base::Value(available_update_->sha256));
+            return;
+        }
+
+        base::LaunchOptions options;
+        options.start_hidden = false;
+        base::CommandLine command(verified_installer_path_);
+        const base::Process process = base::LaunchProcess(command, options);
+        web_ui()->CallJavascriptFunctionUnsafe(
+            "whisterSettings.onUpdateDownloadResult",
+            base::Value(process.IsValid() ? "installer_started" : "error"),
+            base::Value(available_update_->version),
+            base::Value(*hash));
     }
 
 

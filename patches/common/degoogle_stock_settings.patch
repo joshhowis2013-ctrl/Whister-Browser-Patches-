@@ -1,0 +1,60 @@
+diff --git a/chrome/app/chromium_strings.grd b/chrome/app/chromium_strings.grd
+--- a/chrome/app/chromium_strings.grd
++++ b/chrome/app/chromium_strings.grd
+@@ -296,6 +296,6 @@
+           <message name="IDS_PRODUCT_NAME" desc="The Chrome application name" translateable="false">
+-            Chromium
++            Whister Browser
+           </message>
+           <message name="IDS_SHORT_PRODUCT_NAME" desc="The Chrome application short name." translateable="false">
+-            Chromium
++            Whister
+           </message>
+diff --git a/chrome/app/generated_resources.grd b/chrome/app/generated_resources.grd
+--- a/chrome/app/generated_resources.grd
++++ b/chrome/app/generated_resources.grd
+@@ -1937,3 +1937,3 @@
+         <message name="IDS_SETTINGS" desc="The text label of the Settings menu item">
+-          Settin&amp;gs
++          Whister Settin&amp;gs
+         </message>
+diff --git a/chrome/app/settings_chromium_strings.grdp b/chrome/app/settings_chromium_strings.grdp
+--- a/chrome/app/settings_chromium_strings.grdp
++++ b/chrome/app/settings_chromium_strings.grdp
+@@ -24 +24 @@
+-        About Chromium
++        About Whister
+@@ -27 +27 @@
+-        Get help with Chromium
++        Get help with Whister
+@@ -32 +32 @@
+-      Updating Chromium
++      Updating Whister
+@@ -35 +35 @@
+-      Updating Chromium (<ph name="PROGRESS_PERCENT">$1<ex>90%</ex></ph>)
++      Updating Whister (<ph name="PROGRESS_PERCENT">$1<ex>90%</ex></ph>)
+@@ -38 +38 @@
+-      Nearly up to date! Relaunch Chromium to finish updating.
++      Nearly up to date! Relaunch Whister to finish updating.
+@@ -41 +41 @@
+-      Chromium is up to date
++      Whister is up to date
+diff --git a/chrome/app/settings_strings.grdp b/chrome/app/settings_strings.grdp
+--- a/chrome/app/settings_strings.grdp
++++ b/chrome/app/settings_strings.grdp
+@@ -3640 +3640 @@
+-      You and Google
++      Profiles
+diff --git a/chrome/browser/resources/settings/settings_menu/settings_menu.html.ts b/chrome/browser/resources/settings/settings_menu/settings_menu.html.ts
+--- a/chrome/browser/resources/settings/settings_menu/settings_menu.html.ts
++++ b/chrome/browser/resources/settings/settings_menu/settings_menu.html.ts
+@@ -57,2 +57,2 @@
+     <a role="menuitem" id="ai" href="/ai"
+-        ?hidden="${!this.showAiPageMenuItem_()}" class="cr-nav-menu-item">
++        hidden class="cr-nav-menu-item">
+diff --git a/ui/webui/resources/cr_elements/cr_toolbar/cr_toolbar.html.ts b/ui/webui/resources/cr_elements/cr_toolbar/cr_toolbar.html.ts
+--- a/ui/webui/resources/cr_elements/cr_toolbar/cr_toolbar.html.ts
++++ b/ui/webui/resources/cr_elements/cr_toolbar/cr_toolbar.html.ts
+@@ -22,2 +21,0 @@
+-        <source media="(prefers-color-scheme: dark)"
+-            srcset="//resources/images/chrome_logo_dark.svg">

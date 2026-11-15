@@ -7,62 +7,65 @@
   <link rel="stylesheet" href="settings.css">
 </head>
 <body class="setup">
-  <main>
-    <div class="dots" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
-
-    <div class="step hero">
-      <span class="mark big">W</span>
-      <h1 tabindex="-1">Welcome to Whister</h1>
-      <p class="lead">Fast, private and a little bit cheeky. A few quick choices, then you're browsing. Change anything later in Settings.</p>
-      <div class="actions"><button class="primary" type="button" data-next>Let's go</button></div>
+  <main aria-labelledby="setup-title">
+    <p class="setup-kicker"><span class="setup-pulse" aria-hidden="true"></span>Whister setup</p>
+    <div class="dots" aria-label="Setup progress">
+      <span aria-label="Welcome"></span><span aria-label="Default browser"></span><span aria-label="Search engine"></span><span aria-label="Import"></span><span aria-label="Finish"></span>
     </div>
 
-    <div class="step" hidden>
-      <h1 tabindex="-1">Pick your search engine</h1>
-      <p class="lead">This is what the address bar uses when you type a search.</p>
-      <div class="panel">
-        <label class="row"><span><b>Search engine</b><small>You can switch any time</small></span>
-          <select class="engine"></select></label>
+    <section class="step hero">
+      <div class="setup-orbit" aria-hidden="true"><span class="mark big">W</span></div>
+      <p class="eyebrow">A better first tab</p>
+      <h1 id="setup-title" tabindex="-1">Welcome to Whister</h1>
+      <p class="lead">A few choices and you are ready to browse. Every choice is available later in Settings.</p>
+      <div class="actions"><button class="primary" type="button" data-next>Get started <span aria-hidden="true">→</span></button></div>
+    </section>
+
+    <section class="step" hidden>
+      <p class="eyebrow">01 / Default browser</p>
+      <h1 tabindex="-1">Make Whister your default?</h1>
+      <p class="lead">Set Whister as the browser Windows uses for web links. This opens the browser’s real Default browser setting in a new tab.</p>
+      <div class="panel setup-panel setup-action-panel">
+        <span><b>Default browser</b><small>Windows may ask you to confirm the change.</small></span>
+        <a class="secondary-link" href="whister://settings/defaultBrowser" target="_blank">Open Default browser settings <span aria-hidden="true">↗</span></a>
       </div>
-      <div class="actions"><button class="ghost" type="button" data-back>Back</button><button class="primary" type="button" data-next>Next</button></div>
-    </div>
+      <div class="actions"><button class="ghost" type="button" data-back>Back</button><button class="primary" type="button" data-next>I’ll do this later <span aria-hidden="true">→</span></button></div>
+    </section>
 
-    <div class="step" hidden>
-      <h1 tabindex="-1">Keep it private</h1>
-      <p class="lead">Sensible defaults, your call.</p>
-      <div class="panel">
-        <label class="row"><span><b>Send "Do Not Track"</b><small>A polite request for sites to leave you alone</small></span>
-          <input class="switch" type="checkbox" data-key="enable_do_not_track"></label>
-        <label class="row"><span><b>Search suggestions</b><small>Ideas as you type in the address bar</small></span>
-          <input class="switch" type="checkbox" data-key="search.suggest_enabled"></label>
+    <section class="step" hidden>
+      <p class="eyebrow">02 / Search</p>
+      <h1 tabindex="-1">Choose your search engine</h1>
+      <p class="lead">This becomes the search provider used from Whister’s address bar.</p>
+      <div class="panel setup-panel">
+        <label class="row"><span><b>Search engine</b><small>Only search engines available in this profile are shown.</small></span>
+          <select class="engine" aria-label="Search engine"></select></label>
       </div>
-      <div class="actions"><button class="ghost" type="button" data-back>Back</button><button class="primary" type="button" data-next>Next</button></div>
-    </div>
+      <div class="actions"><button class="ghost" type="button" data-back>Back</button><button class="primary" type="button" data-next>Continue <span aria-hidden="true">→</span></button></div>
+    </section>
 
-    <div class="step" hidden>
-      <h1 tabindex="-1">Make it feel like home</h1>
-      <p class="lead">Last one.</p>
-      <div class="panel">
-        <label class="row"><span><b>When Whister wakes up</b><small>Start fresh or pick up where you left off</small></span>
-          <select data-key="session.restore_on_startup" data-type="int">
-            <option value="5">Open a fresh new tab</option>
-            <option value="1">Continue where I left off</option>
-          </select></label>
-        <label class="row"><span><b>Home button</b><small>One click back to your starting point</small></span>
-          <input class="switch" type="checkbox" data-key="browser.show_home_button"></label>
+    <section class="step" hidden>
+      <p class="eyebrow">03 / Bring your things</p>
+      <h1 tabindex="-1">Import bookmarks and settings</h1>
+      <p class="lead">Bring over available bookmarks, history, passwords, search engines, and autofill data from another browser.</p>
+      <div class="panel setup-panel setup-action-panel">
+        <span><b>Import browser data</b><small>The import page shows the browsers and data types detected on this device.</small></span>
+        <a class="secondary-link" href="whister://settings/importData" target="_blank">Open Import settings <span aria-hidden="true">↗</span></a>
       </div>
-      <div class="actions"><button class="ghost" type="button" data-back>Back</button><button class="primary" type="button" data-next>Next</button></div>
-    </div>
+      <p class="setup-note">Nothing is imported until you choose data and confirm it on the Import page.</p>
+      <div class="actions"><button class="ghost" type="button" data-back>Back</button><button class="primary" type="button" data-next>Continue <span aria-hidden="true">→</span></button></div>
+    </section>
 
-    <div class="step" hidden>
-      <h1 tabindex="-1">Ready to switch?</h1>
-      <p class="lead">Your choices are saved. Add an optional blocker before opening your first tab.</p>
-      <div class="panel">
-        <label class="row"><span><b>Install uBlock Origin Lite</b><small>Whister will request it from the Chrome Web Store. Chromium may ask you to confirm the extension.</small></span>
-          <input class="switch" id="install-ublock-lite" type="checkbox"></label>
+    <section class="step finish" hidden>
+      <div class="finish-mark" aria-hidden="true">✓</div>
+      <p class="eyebrow">04 / Ready</p>
+      <h1 tabindex="-1">You’re ready to browse</h1>
+      <p class="lead">Whister is set up. You can revisit these choices at any time from Settings.</p>
+      <div class="finish-summary panel" aria-label="Setup complete">
+        <span class="summary-dot" aria-hidden="true"></span>
+        <span>Setup choices are saved to this browser profile.</span>
       </div>
-      <div class="actions"><button class="ghost" type="button" data-back>Back</button><button id="finish" class="primary" type="button">Start browsing</button></div>
-    </div>
+      <div class="actions"><button class="ghost" type="button" data-back>Back</button><button id="finish" class="primary" type="button">Start browsing <span aria-hidden="true">→</span></button></div>
+    </section>
   </main>
   <script src="settings.js"></script>
 </body>

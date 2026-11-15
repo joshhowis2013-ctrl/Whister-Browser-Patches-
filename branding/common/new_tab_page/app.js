@@ -111,15 +111,60 @@ window.whisterSettings = {
         const theme = Number(values['browser.theme.color_scheme2']);
         const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
         document.documentElement.dataset.theme = theme === 1 ? 'light' : theme === 2 ? 'dark' : prefersLight ? 'light' : 'dark';
+    },
+    onBookmarks(bookmarks) {
+        const grid = document.getElementById('bookmark-grid');
+        const empty = document.getElementById('bookmarks-empty');
+        if (!grid || !empty) return;
+        grid.replaceChildren();
+        for (const bookmark of bookmarks) {
+            try {
+                const url = new URL(bookmark.url);
+                if (!['http:', 'https:'].includes(url.protocol)) continue;
+                const link = document.createElement('a');
+                link.className = 'bookmark-link';
+                link.href = url.href;
+                link.dataset.webuiNavigate = '';
+                const initial = document.createElement('span');
+                initial.className = 'bookmark-initial';
+                initial.setAttribute('aria-hidden', 'true');
+                initial.textContent = (bookmark.title || url.hostname).trim().charAt(0).toUpperCase();
+                const text = document.createElement('span');
+                text.className = 'bookmark-text';
+                const title = document.createElement('b');
+                title.textContent = bookmark.title || url.hostname;
+                const host = document.createElement('small');
+                host.textContent = url.hostname;
+                text.append(title, host);
+                link.append(initial, text);
+                grid.append(link);
+            } catch (error) {
+                continue;
+            }
+        }
+        empty.hidden = grid.childElementCount > 0;
     }
 };
+
+document.addEventListener('click', function(event) {
+    const link = event.target instanceof Element
+        ? event.target.closest('a[data-webui-navigate]')
+        : null;
+    if (!link || !(link instanceof HTMLAnchorElement)) return;
+    event.preventDefault();
+    if (window.chrome && typeof window.chrome.send === 'function') {
+        window.chrome.send('navigateToUrl', [link.href]);
+    }
+});
+
 if (window.chrome && typeof window.chrome.send === 'function') {
     window.chrome.send('getSettings');
+    window.chrome.send('getBookmarks');
 }
 
 const customizationStorageKey = 'whister-newtab-customization';
 const wallpapers = ['dusk', 'aurora', 'ocean', 'grove', 'ember', 'rose', 'stone'];
-const accents = ['violet', 'cyan', 'mint', 'coral'];
+const accents = ['blue', 'violet', 'cyan', 'mint', 'coral'];
 const visibilityDefaults = { greeting: true, clock: true, weather: true };
 const widgetIds = { greeting: 'greeting', clock: 'clock', weather: 'weather-card' };
 const customizeToggle = document.getElementById('customize-toggle');
@@ -170,7 +215,7 @@ function applyCustomBackground(photo) {
 }
 
 function applyAccent(value) {
-    const accent = accents.includes(value) ? value : 'violet';
+    const accent = accents.includes(value) ? value : 'blue';
     document.documentElement.dataset.accent = accent;
     document.querySelectorAll('[data-accent-choice]').forEach(function(button) {
         button.setAttribute('aria-pressed', String(button.dataset.accentChoice === accent));

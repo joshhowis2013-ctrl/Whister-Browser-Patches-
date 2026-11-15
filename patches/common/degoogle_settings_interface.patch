@@ -1,26 +1,36 @@
 diff --git a/chrome/browser/resources/settings/people_page/people_page.html.ts b/chrome/browser/resources/settings/people_page/people_page.html.ts
+index 0000000..1111111 100644
 --- a/chrome/browser/resources/settings/people_page/people_page.html.ts
 +++ b/chrome/browser/resources/settings/people_page/people_page.html.ts
-@@ -17,3 +17,3 @@
-         ${this.shouldShowSyncAccountControl_() ? html`
--          <settings-sync-account-control
-+          <settings-sync-account-control hidden
-               .syncStatus="${this.syncStatus!}"
-@@ -91,5 +91,5 @@
-         </cr-link-row>
+@@ -13,7 +13,7 @@ export function getHtml(this: SettingsPeoplePageElement) {
  
--        <cr-link-row id="sync-setup"
-+        <cr-link-row id="sync-setup" hidden
-             label="$i18n{syncAndNonPersonalizedServices}"
-             .subLabel="${this.getSyncAndNonPersonalizedServicesSubtext_()}"
-@@ -99,4 +99,4 @@
-         </cr-link-row>
+ <if expr="not is_chromeos">
+     ${this.shouldShowSyncAccountControl_() ? html`
+-      <settings-sync-account-control .syncStatus="${this.syncStatus!}"
++      <settings-sync-account-control hidden .syncStatus="${this.syncStatus!}"
+           promo-label-with-account="$i18n{peopleSignInPrompt}"
+           promo-label-with-no-account="$i18n{peopleSignInPrompt}"
+           promo-secondary-label-with-account="$i18n{peopleSignInPromptSecondaryWithAccount}"
+@@ -83,18 +83,18 @@ export function getHtml(this: SettingsPeoplePageElement) {
+     <cr-link-row id="sync-setup" label="$i18n{syncAndNonPersonalizedServices}"
+         .subLabel="${this.getSyncAndNonPersonalizedServicesSubtext_()}"
+         @click="${this.onSyncClick_}"
+         role-description="$i18n{subpageArrowRoleDescription}"
+-        ?hidden="${this.shouldHideSyncSetupLinkRow_()}">
++        .hidden="${true}">
+     </cr-link-row>
  
--        <cr-link-row id="google-services"
-+        <cr-link-row id="google-services" hidden
-             label="$i18n{googleServicesPageTitle}"
-@@ -109,3 +109,3 @@
-         ${this.signinAllowed_ ? html`
--          <cr-link-row id="manage-google-account"
-+          <cr-link-row id="manage-google-account" hidden
-               label="$i18n{manageGoogleAccount}"
+     <cr-link-row id="google-services" label="$i18n{googleServicesPageTitle}"
+         @click="${this.onGoogleServicesClick_}"
+         role-description="$i18n{subpageArrowRoleDescription}"
+-        ?hidden="${!this.shouldHideSyncSetupLinkRow_()}">
++        .hidden="${true}">
+     </cr-link-row>
+ 
+ <if expr="not is_chromeos">
+     ${this.signinAllowed_ ? html`
+       <cr-link-row id="manage-google-account" label="$i18n{manageGoogleAccount}"
+-          ?hidden="${!this.shouldShowGoogleAccount_}"
++          .hidden="${true}"
+           @click="${this.onGoogleAccountClick_}" external>
+       </cr-link-row>

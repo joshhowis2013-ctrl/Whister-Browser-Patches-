@@ -1,0 +1,483 @@
+diff --git a/chrome/browser/resources/settings/privacy_page/privacy_page.html.ts b/chrome/browser/resources/settings/privacy_page/privacy_page.html.ts
+--- a/chrome/browser/resources/settings/privacy_page/privacy_page.html.ts
++++ b/chrome/browser/resources/settings/privacy_page/privacy_page.html.ts
+@@ -46,7 +46,40 @@ export function getHtml(this: SettingsPrivacyPageElement) {
+       sub-label="$i18n{siteSettingsSublabel}"
+       @click="${this.onSiteSettingsLinkRowClick_}"
+       role-description="$i18n{subpageArrowRoleDescription}">
+   </cr-link-row>
++  <div id="whisterBlockerCard">
++    <h2 id="whisterBlockerHeader">Whister Blocker</h2>
++    <settings-toggle-button id="whisterBlockerToggle" class="toggle"
++        label="Enable Whister Blocker"
++        sub-label="Block known advertising and tracker requests"
++        pref-key="whister.blocker.enabled"
++        ?disabled="${this.isWhisterBlockerPrefLoading_()}">
++    </settings-toggle-button>
++    <div class="cr-row">
++      <div class="flex">
++        <div>Page status</div>
++        <div class="secondary">${this.getWhisterBlockerStatus_()}</div>
++      </div>
++    </div>
++    <div class="cr-row">
++      <div class="flex">
++        <div>Rules</div>
++        <div class="secondary">
++          Native rules block known ad hosts and a conservative list of
++          analytics and tracker hosts.
++        </div>
++      </div>
++    </div>
++    <div class="cr-row">
++      <div class="flex">
++        <div>Block an element</div>
++        <div class="secondary">
++          Open the Whister Blocker toolbar button on the page, then choose
++          Pick an element to block. The selection lasts until reload.
++        </div>
++      </div>
++    </div>
++  </div>
+   <cr-toast id="deleteBrowsingDataToast" duration="5000">
+     <div>${this.dbdDeletionConfirmationToastLabel_}</div>
+   </cr-toast>
+diff --git a/chrome/browser/resources/settings/privacy_page/privacy_page.ts b/chrome/browser/resources/settings/privacy_page/privacy_page.ts
+index b3ecabfb8fd6f..564f0da3f8aa5 100644
+--- a/chrome/browser/resources/settings/privacy_page/privacy_page.ts
++++ b/chrome/browser/resources/settings/privacy_page/privacy_page.ts
+@@ -12,6 +12,7 @@ import 'chrome://resources/cr_elements/cr_link_row/cr_link_row.js';
+ import 'chrome://resources/cr_elements/cr_toast/cr_toast.js';
+ import '../icons.html.js';
+ import '../privacy_icons.html.js';
++import '../controls/settings_toggle_button.js';
+ import '../settings_page/settings_section.js';
+ import './privacy_guide/privacy_guide_dialog.js';
+ 
+@@ -24,3 +24,3 @@ import {focusWithoutInk} from 'chrome://resources/js/focus_without_ink.js';
+-import {CrLitElement} from 'chrome://resources/lit/v3_0/lit.rollup.js';
++import {css, CrLitElement} from 'chrome://resources/lit/v3_0/lit.rollup.js';
+ 
+ import {loadTimeData} from '../i18n_setup.js';
+@@ -54,7 +54,37 @@ export class SettingsPrivacyPageElement extends SettingsPrivacyPageElementBase {
+       getCrSharedStyleCss(),
+       getCrHiddenStyleCss(),
+       getSettingsSharedCss(),
++      css`
++        #whisterBlockerCard {
++          background: linear-gradient(135deg, rgba(20, 44, 78, .92),
++              rgba(17, 27, 45, .82));
++          border: 1px solid rgba(96, 165, 250, .24);
++          border-radius: 16px;
++          box-shadow: 0 12px 32px rgba(0, 0, 0, .2),
++              inset 0 1px rgba(255, 255, 255, .08);
++          margin: 20px 0;
++          overflow: hidden;
++        }
++
++        #whisterBlockerHeader {
++          background: linear-gradient(100deg, rgba(37, 99, 235, .24),
++              rgba(34, 184, 207, .08));
++          color: var(--color-settings-title-text);
++          margin: 0;
++          padding: 16px 20px;
++        }
++
++        #whisterBlockerCard settings-toggle-button,
++        #whisterBlockerCard .cr-row {
++          background: transparent;
++          border-top: 1px solid rgba(147, 197, 253, .13);
++        }
++
++        #whisterBlockerCard settings-toggle-button {
++          display: block;
++        }
++      `,
+     ];
+   }
+ 
+   override render() {
+@@ -83,6 +115,8 @@ export class SettingsPrivacyPageElement extends SettingsPrivacyPageElementBase {
+       showUniversalOptOutSettings_: {type: Boolean},
+ 
+       cookieControlsModePref_: {type: Object},
++      whisterBlockerEnabledPref_: {type: Object},
++      whisterBlockedCountPref_: {type: Object},
+     };
+   }
+ 
+@@ -93,6 +96,10 @@ export class SettingsPrivacyPageElement extends SettingsPrivacyPageElementBase {
+       loadTimeData.getBoolean('showUniversalOptOutSettings');
+   private accessor cookieControlsModePref_:
+       chrome.settingsPrivate.PrefObject<CookieControlsMode>|undefined;
++  private accessor whisterBlockerEnabledPref_:
++      chrome.settingsPrivate.PrefObject<boolean>|undefined;
++  private accessor whisterBlockedCountPref_:
++      chrome.settingsPrivate.PrefObject<number>|undefined;
+ 
+   private shouldShowDbdDeletionConfirmationToast_: boolean = false;
+   private metricsBrowserProxy_: MetricsBrowserProxy =
+@@ -102,6 +109,10 @@ export class SettingsPrivacyPageElement extends SettingsPrivacyPageElementBase {
+     super.connectedCallback();
+ 
+     this.mirrorPref('profile.cookie_controls_mode', 'cookieControlsModePref_');
++    this.mirrorPref(
++        'whister.blocker.enabled', 'whisterBlockerEnabledPref_');
++    this.mirrorPref(
++        'whister.blocker.blocked_count', 'whisterBlockedCountPref_');
+   }
+ 
+   override currentRouteChanged(newRoute: Route, oldRoute?: Route) {
+@@ -114,6 +125,21 @@ export class SettingsPrivacyPageElement extends SettingsPrivacyPageElementBase {
+         this.isPrivacyGuideAvailable;
+   }
+ 
++  protected getWhisterBlockerStatus_(): string {
++    if (!this.whisterBlockerEnabledPref_) {
++      return 'Checking saved blocker status…';
++    }
++    if (!this.whisterBlockerEnabledPref_.value) {
++      return 'Off: blocking is disabled.';
++    }
++    const count = this.whisterBlockedCountPref_?.value || 0;
++    return `Active: ${count} page elements hidden on the last checked page.`;
++  }
++
++  protected isWhisterBlockerPrefLoading_(): boolean {
++    return !this.whisterBlockerEnabledPref_;
++  }
++
+   protected onClearBrowsingDataClick_() {
+     this.interactedWithPage_();
+ 
+diff --git a/chrome/browser/ui/views/toolbar/toolbar_view.cc b/chrome/browser/ui/views/toolbar/toolbar_view.cc
+index 1d13811307a58..41324f64101f0 100644
+--- a/chrome/browser/ui/views/toolbar/toolbar_view.cc
++++ b/chrome/browser/ui/views/toolbar/toolbar_view.cc
+@@ -19,6 +19,7 @@
+ #include "base/metrics/user_metrics_action.h"
+ #include "base/notimplemented.h"
+ #include "base/strings/utf_string_conversions.h"
++#include "base/strings/string_number_conversions.h"
+ #include "base/trace_event/trace_event.h"
+ #include "build/build_config.h"
+ #include "chrome/app/chrome_command_ids.h"
+@@ -88,6 +89,8 @@
+ #include "chrome/browser/ui/views/global_media_controls/media_toolbar_button_view.h"
+ #include "chrome/browser/ui/views/intent_picker_bubble_view.h"
+ #include "chrome/browser/ui/views/location_bar/webui_location_bar.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/web_contents.h"
+ #include "chrome/browser/ui/views/page_action/page_action_container_view.h"
+ #include "chrome/browser/ui/views/page_action/page_action_view.h"
+ #include "chrome/browser/ui/views/page_action/page_action_view_interface.h"
+@@ -145,6 +148,7 @@
+ #include "ui/actions/actions.h"
+ #include "ui/base/interaction/element_identifier.h"
+ #include "ui/base/l10n/l10n_util.h"
++#include "ui/base/mojom/dialog_button.mojom.h"
+ #include "ui/base/metadata/metadata_impl_macros.h"
+ #include "ui/base/theme_provider.h"
+ #include "ui/base/ui_base_features.h"
+@@ -160,9 +164,13 @@
+ #include "ui/views/accessibility/view_accessibility.h"
+ #include "ui/views/actions/action_view_controller.h"
+ #include "ui/views/background.h"
++#include "ui/views/bubble/bubble_dialog_delegate_view.h"
+ #include "ui/views/cascading_property.h"
+ #include "ui/views/controls/button/label_button.h"
++#include "ui/views/controls/button/toggle_button.h"
++#include "ui/views/controls/label.h"
+ #include "ui/views/controls/separator.h"
++#include "ui/views/layout/box_layout.h"
+ #include "ui/views/layout/fill_layout.h"
+ #include "ui/views/layout/flex_layout.h"
+ #include "ui/views/layout/flex_layout_view.h"
+@@ -223,6 +231,20 @@ constexpr int kLargeSpaceBetweenButtons = 6;
+ constexpr int kInsideBorderAroundGlicButtons = 2;
+ constexpr int kGlicButtonMargin = 5;
+ 
++class WhisterBlockerToolbarButton : public ToolbarButton {
++ public:
++  explicit WhisterBlockerToolbarButton(PressedCallback callback)
++      : ToolbarButton(std::move(callback)) {}
++
++  void SetStatus(bool enabled, int blocked_count) {
++    SetText(u"W " + base::NumberToString16(blocked_count));
++    SetTooltipText(enabled ? u"Whister Blocker is active"
++                           : u"Whister Blocker is off");
++    GetViewAccessibility().SetName(enabled ? u"Whister Blocker active"
++                                           : u"Whister Blocker off");
++  }
++};
++
+ // Returns whether `point` should be treated as part of the caption area in
+ // `view`. Recursively traverses into icon containers to correctly handle
+ // padding between buttons.
+@@ -273,6 +295,112 @@ void SetRefreshMargins(views::View* button, bool expanded) {
+ 
+ }  // namespace
+ 
++class WhisterBlockerBubble : public views::BubbleDialogDelegateView {
++  METADATA_HEADER(WhisterBlockerBubble, views::BubbleDialogDelegateView)
++
++ public:
++  WhisterBlockerBubble(views::View* anchor_view,
++                       PrefService* prefs,
++                       base::RepeatingClosure start_element_picker,
++                       int blocked_count)
++      : BubbleDialogDelegateView(views::BubbleAnchor(anchor_view),
++                                 views::BubbleBorder::Arrow::TOP_RIGHT),
++        prefs_(prefs),
++        start_element_picker_(std::move(start_element_picker)),
++        blocked_count_(std::max(0, blocked_count)) {
++    SetButtons(static_cast<int>(ui::mojom::DialogButton::kNone));
++    SetTitle(u"Whister Blocker");
++    set_margins(gfx::Insets(16));
++    SetLayoutManager(std::make_unique<views::BoxLayout>(
++        views::BoxLayout::Orientation::kVertical, gfx::Insets(), 12));
++
++    auto status_row = std::make_unique<views::View>();
++    status_row->SetLayoutManager(std::make_unique<views::BoxLayout>(
++        views::BoxLayout::Orientation::kHorizontal, gfx::Insets(), 12));
++    auto protection_label = std::make_unique<views::Label>(
++        u"Block ads and trackers");
++    protection_label->SetMultiLine(true);
++    protection_label->SetMaximumWidth(260);
++    status_row->AddChildView(std::move(protection_label));
++    toggle_ = status_row->AddChildView(std::make_unique<views::ToggleButton>(
++        base::BindRepeating(&WhisterBlockerBubble::OnTogglePressed,
++                            base::Unretained(this))));
++    toggle_->SetPreferredSize(gfx::Size(52, 32));
++    toggle_->GetViewAccessibility().SetName(u"Enable Whister Blocker");
++    AddChildView(std::move(status_row));
++
++    status_label_ = AddChildView(std::make_unique<views::Label>());
++    status_label_->SetMultiLine(true);
++    status_label_->SetMaximumWidth(360);
++
++    auto rules_label = std::make_unique<views::Label>(
++        u"Built-in rules block known advertising and tracker requests. "
++        u"Consent dialogs are not ads and are not blocked.");
++    rules_label->SetMultiLine(true);
++    rules_label->SetMaximumWidth(360);
++    AddChildView(std::move(rules_label));
++
++    auto picker_button = std::make_unique<views::LabelButton>(
++        base::BindRepeating(&WhisterBlockerBubble::OnStartElementPicker,
++                            base::Unretained(this)),
++        u"Pick an element to block");
++    picker_button_ = AddChildView(std::move(picker_button));
++    auto picker_label = std::make_unique<views::Label>(
++        u"Choose a visible element on the current page. The selection applies "
++        u"until the page is reloaded.");
++    picker_label->SetMultiLine(true);
++    picker_label->SetMaximumWidth(360);
++    AddChildView(std::move(picker_label));
++
++    UpdateStatus(prefs_->GetBoolean("whister.blocker.enabled"));
++  }
++
++  gfx::Size CalculatePreferredSize(
++      const views::SizeBounds& available_size) const override {
++    constexpr int kMinimumWidth = 280;
++    constexpr int kPreferredWidth = 340;
++    constexpr int kMaximumWidth = 420;
++    const int width = available_size.width().is_bounded()
++                          ? std::clamp(available_size.width().value(),
++                                       kMinimumWidth, kMaximumWidth)
++                          : kPreferredWidth;
++    return gfx::Size(
++        width, GetLayoutManager()->GetPreferredHeightForWidth(this, width));
++  }
++
++ private:
++  void OnTogglePressed() {
++    const bool enabled = toggle_->GetIsOn();
++    prefs_->SetString("whister.blocker.ui", enabled ? "whister" : "off");
++    prefs_->SetBoolean("whister.blocker.enabled", enabled);
++    UpdateStatus(enabled);
++  }
++
++  void UpdateStatus(bool enabled) {
++    toggle_->SetIsOn(enabled);
++    status_label_->SetText(
++        enabled ? u"Active: " + base::NumberToString16(blocked_count_) +
++                      u" page elements hidden on the last checked page"
++                : u"Off: blocking is disabled");
++    picker_button_->SetEnabled(enabled);
++  }
++
++  void OnStartElementPicker() {
++    if (prefs_->GetBoolean("whister.blocker.enabled")) {
++      start_element_picker_.Run();
++    }
++  }
++
++  const raw_ptr<PrefService> prefs_;
++  base::RepeatingClosure start_element_picker_;
++  const int blocked_count_;
++  raw_ptr<views::Label> status_label_ = nullptr;
++  raw_ptr<views::ToggleButton> toggle_ = nullptr;
++  raw_ptr<views::LabelButton> picker_button_ = nullptr;
++};
++BEGIN_METADATA(WhisterBlockerBubble)
++END_METADATA
++
+ ////////////////////////////////////////////////////////////////////////////////
+ // ToolbarView, public:
+ 
+@@ -493,6 +621,55 @@ void ToolbarView::Init() {
+     location_bar_ = toolbar_webview_->GetLocationBar();
+   }
+ 
++  auto blocker_button = std::make_unique<WhisterBlockerToolbarButton>(
++      base::BindRepeating(
++          [](ToolbarView* toolbar) {
++            auto bubble = std::make_unique<WhisterBlockerBubble>(
++                toolbar->whister_blocker_button_,
++                toolbar->browser()->GetProfile()->GetPrefs(),
++                base::BindRepeating(
++                    [](ToolbarView* toolbar) {
++                      content::WebContents* contents =
++                          toolbar->GetWebContents();
++                      if (contents && contents->GetPrimaryMainFrame()) {
++                        contents->GetPrimaryMainFrame()
++                            ->ExecuteJavaScriptInIsolatedWorld(
++                                u"document.dispatchEvent(new CustomEvent("
++                                u"'whister-start-element-picker'));",
++                                base::DoNothing(), 1);
++                      }
++                    },
++                    toolbar),
++                toolbar->whister_blocked_count_);
++            views::BubbleDialogDelegateView::CreateBubble(std::move(bubble))
++                ->Show();
++            content::WebContents* contents = toolbar->GetWebContents();
++            if (contents && contents->GetPrimaryMainFrame()) {
++              contents->GetPrimaryMainFrame()
++                  ->ExecuteJavaScriptInIsolatedWorld(
++                      u"Number(document.documentElement.dataset."
++                      u"whisterBlockedCount || 0)",
++                      base::BindOnce(
++                          [](base::WeakPtr<ToolbarView> toolbar,
++                             base::Value value) {
++                            if (toolbar && value.is_int()) {
++                              toolbar->OnWhisterBlockedCount(
++                                  value.GetInt());
++                            }
++                          },
++                          toolbar->weak_factory_.GetWeakPtr()),
++                      1);
++            }
++          },
++          this));
++  whister_blocker_button_ = AddChildView(
++      std::unique_ptr<ToolbarButton>(std::move(blocker_button)));
++  whister_blocker_enabled_.Init(
++      "whister.blocker.enabled", prefs,
++      base::BindRepeating(&ToolbarView::OnWhisterBlockerPrefChanged,
++                          base::Unretained(this)));
++  OnWhisterBlockerPrefChanged();
++
+   bool is_glic_left_of_profile =
+       features::kGlicToolbarButtonLocationParam.Get() ==
+           features::GlicToolbarButtonLocation::kLeftOfProfileChip ||
+@@ -2158,6 +2335,19 @@ views::View* ToolbarView::GetViewForDrop() {
+   return this;
+ }
+ 
++void ToolbarView::OnWhisterBlockerPrefChanged() {
++  const bool enabled = whister_blocker_enabled_.GetValue();
++  static_cast<WhisterBlockerToolbarButton*>(whister_blocker_button_.get())
++      ->SetStatus(enabled, whister_blocked_count_);
++}
++
++void ToolbarView::OnWhisterBlockedCount(int blocked_count) {
++  whister_blocked_count_ = std::max(0, blocked_count);
++  browser()->GetProfile()->GetPrefs()->SetInteger(
++      "whister.blocker.blocked_count", whister_blocked_count_);
++  OnWhisterBlockerPrefChanged();
++}
++
+ void ToolbarView::OnChromeLabsPrefChanged() {
+   actions::ActionItem* chrome_labs_action =
+       pinned_toolbar_actions_container_->GetActionItemFor(
+diff --git a/chrome/browser/ui/views/toolbar/toolbar_view.h b/chrome/browser/ui/views/toolbar/toolbar_view.h
+index e10dc91a6710c..f7dae597f95fa 100644
+--- a/chrome/browser/ui/views/toolbar/toolbar_view.h
++++ b/chrome/browser/ui/views/toolbar/toolbar_view.h
+@@ -360,6 +360,9 @@ class ToolbarView : public views::AccessiblePaneView,
+   // Loads the images for all the child views.
+   void LoadImages();
+ 
++  void OnWhisterBlockerPrefChanged();
++  void OnWhisterBlockedCount(int blocked_count);
++
+   void OnShowForwardButtonChanged();
+ 
+   void OnShowHomeButtonChanged();
+@@ -432,6 +435,7 @@ class ToolbarView : public views::AccessiblePaneView,
+   raw_ptr<MediaToolbarButton> media_button_ = nullptr;
+   raw_ptr<BrowserAppMenuButton> app_menu_button_ = nullptr;
+ 
++  raw_ptr<ToolbarButton> whister_blocker_button_ = nullptr;
+   // The button currently holding the lock to be shown/hidden.
+   raw_ptr<glic::GlicButtonInterface> locked_expansion_button_ = nullptr;
+   raw_ptr<GlicAndActorButtonsContainer> glic_actor_button_container_ = nullptr;
+@@ -475,6 +479,8 @@ class ToolbarView : public views::AccessiblePaneView,
+   BooleanPrefMember show_home_button_;
+ 
+   BooleanPrefMember show_chrome_labs_button_;
++  BooleanPrefMember whister_blocker_enabled_;
++  int whister_blocked_count_ = 0;
+ 
+   // The display mode used when laying out the toolbar.
+   const DisplayMode display_mode_;
+@@ -506,6 +512,8 @@ class ToolbarView : public views::AccessiblePaneView,
+   bool should_show_glic_actor_ = false;
+ 
+   bool was_mouse_down_ = false;
++
++  base::WeakPtrFactory<ToolbarView> weak_factory_{this};
+ };
+ 
+ extern const ui::ClassProperty<bool>* const kActionItemUnderlineIndicatorKey;
+diff --git a/ui/views/bubble/bubble_dialog_delegate_view.h b/ui/views/bubble/bubble_dialog_delegate_view.h
+index 3e61deab1a31f..9005ca59d3076 100644
+--- a/ui/views/bubble/bubble_dialog_delegate_view.h
++++ b/ui/views/bubble/bubble_dialog_delegate_view.h
+@@ -84,6 +84,7 @@ class ToolbarActionHoverCardBubbleView;
+ class ScreenshotSurfaceTestDialog;
+ class WebBubbleView;
+ class WebUIBubbleDialogView;
++class WhisterBlockerBubble;
+ FORWARD_DECLARE_TEST(InProcessBrowserTest,
+                      RunsScheduledLayoutOnAnchoredBubbles);
+ 
+@@ -923,6 +924,7 @@ class VIEWS_EXPORT BubbleDialogDelegateView : public View,
+   friend class ::ScreenshotSurfaceTestDialog;
+   friend class ::WebBubbleView;
+   friend class ::WebUIBubbleDialogView;
++  friend class ::WhisterBlockerBubble;
+   FRIEND_TEST_ALL_PREFIXES(::InProcessBrowserTest,
+                            RunsScheduledLayoutOnAnchoredBubbles);
+   friend class ::arc::ArcSplashScreenDialogView;
+diff --git a/chrome/browser/extensions/api/settings_private/prefs_util.cc b/chrome/browser/extensions/api/settings_private/prefs_util.cc
+--- a/chrome/browser/extensions/api/settings_private/prefs_util.cc
++++ b/chrome/browser/extensions/api/settings_private/prefs_util.cc
+@@ -159,2 +159,6 @@ bool IsSettingReadOnly(const std::string& pref_name) {
+ bool IsSettingReadOnly(const std::string& pref_name) {
++  if (pref_name == "whister.blocker.blocked_count") {
++    return true;
++  }
++
+   // download.default_directory is used to display the directory location and
+@@ -296,3 +296,7 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
+ #endif
+   (*s_allowlist)[::prefs::kShowHomeButton] = settings_api::PrefType::kBoolean;
++  (*s_allowlist)["whister.blocker.enabled"] =
++      settings_api::PrefType::kBoolean;
++  (*s_allowlist)["whister.blocker.blocked_count"] =
++      settings_api::PrefType::kNumber;
+   (*s_allowlist)[contextual_search::kDriveConsentState] =

@@ -1,0 +1,8 @@
+{
+  "feedUrl": "https://beta-updates.whisterbrowser.com/win/beta/manifest.json",
+  "channel": "beta",
+  "currentVersion": "__APP_VERSION__",
+  "manifestPublicKeySpkiBase64": "",
+  "trustedSignerThumbprint": "",
+  "checkIntervalHours": 24
+}

@@ -5,12 +5,53 @@ diff --git a/chrome/browser/ui/color/chrome_color_mixer.cc b/chrome/browser/ui/c
    mixer[kColorToolbarTextDefault] = {dark_mode ? SK_ColorWHITE
                                                 : gfx::kGoogleGrey800};
 +  if (dark_mode) {
-+    mixer[kColorToolbar] = {SkColorSetRGB(0x0d, 0x0e, 0x15)};
++    mixer[kColorToolbar] = {SkColorSetRGB(0x08, 0x19, 0x2d)};
 +    mixer[kColorToolbarText] = {SkColorSetRGB(0xe2, 0xe8, 0xf0)};
-+    mixer[kColorLocationBarBackground] = {SkColorSetRGB(0x1a, 0x1c, 0x29)};
-+    mixer[kColorLocationBarBorder] = {SkColorSetRGB(0x62, 0x00, 0xee)};
-+    mixer[kColorOmniboxResultsBackground] = {SkColorSetRGB(0x1a, 0x1c, 0x29)};
-+    mixer[kColorTabBackgroundActiveFrameActive] = {SkColorSetRGB(0x1a, 0x1c, 0x29)};
++    mixer[kColorToolbarButtonIcon] = {SkColorSetRGB(0xc9, 0xdd, 0xf5)};
++    mixer[kColorToolbarButtonIconHovered] = {SK_ColorWHITE};
++    mixer[kColorToolbarSeparator] = {SkColorSetRGB(0x2b, 0x4c, 0x70)};
++    mixer[kColorToolbarContentAreaSeparator] = {
++        SkColorSetRGB(0x1d, 0x3a, 0x59)};
++    mixer[kColorLocationBarBackground] = {SkColorSetRGB(0x12, 0x2d, 0x4a)};
++    mixer[kColorLocationBarBackgroundHovered] = {
++        SkColorSetRGB(0x18, 0x3a, 0x5d)};
++    mixer[kColorLocationBarBorder] = {SkColorSetRGB(0x4d, 0xa3, 0xff)};
++    mixer[kColorLocationBarBorderOpaque] = {SkColorSetRGB(0x4d, 0xa3, 0xff)};
++    mixer[kColorOmniboxResultsBackground] = {SkColorSetRGB(0x0f, 0x25, 0x3e)};
++    mixer[kColorTabBackgroundInactiveFrameActive] = {
++        SkColorSetRGB(0x0b, 0x21, 0x3a)};
++    mixer[kColorTabForegroundInactiveFrameActive] = {
++        SkColorSetRGB(0xc0, 0xd5, 0xed)};
++    mixer[kColorTabBackgroundActiveFrameActive] = {SkColorSetRGB(0x17, 0x3b, 0x61)};
 +    mixer[kColorTabForegroundActiveFrameActive] = {SkColorSetRGB(0xe2, 0xe8, 0xf0)};
 +  }
    mixer[kColorToolbarTextDisabled] = {kColorToolbarTextDisabledDefault};
+diff --git a/chrome/browser/ui/color/win/native_chrome_color_mixer_win.cc b/chrome/browser/ui/color/win/native_chrome_color_mixer_win.cc
+--- a/chrome/browser/ui/color/win/native_chrome_color_mixer_win.cc
++++ b/chrome/browser/ui/color/win/native_chrome_color_mixer_win.cc
+@@ -344,6 +344,21 @@
+   if (key.contrast_mode == ui::ColorProviderKey::ContrastMode::kHigh) {
+     AddNativeHighContrastColors(mixer);
+   } else {
+     AddNativeNonHighContrastColors(mixer, key);
+   }
++  if (key.color_mode == ui::ColorProviderKey::ColorMode::kDark &&
++      key.contrast_mode != ui::ColorProviderKey::ContrastMode::kHigh) {
++    mixer[kColorToolbar] = {SkColorSetRGB(0x08, 0x19, 0x2d)};
++    mixer[kColorToolbarText] = {SkColorSetRGB(0xe2, 0xe8, 0xf0)};
++    mixer[kColorToolbarButtonIcon] = {SkColorSetRGB(0xc9, 0xdd, 0xf5)};
++    mixer[kColorToolbarButtonIconHovered] = {SK_ColorWHITE};
++    mixer[kColorToolbarSeparator] = {SkColorSetRGB(0x2b, 0x4c, 0x70)};
++    mixer[kColorLocationBarBackground] = {SkColorSetRGB(0x12, 0x2d, 0x4a)};
++    mixer[kColorLocationBarBackgroundHovered] = {
++        SkColorSetRGB(0x18, 0x3a, 0x5d)};
++    mixer[kColorLocationBarBorder] = {SkColorSetRGB(0x4d, 0xa3, 0xff)};
++    mixer[kColorOmniboxResultsBackground] = {SkColorSetRGB(0x0f, 0x25, 0x3e)};
++    mixer[kColorTabBackgroundInactiveFrameActive] = {
++        SkColorSetRGB(0x0b, 0x21, 0x3a)};
++    mixer[kColorTabForegroundInactiveFrameActive] = {
++        SkColorSetRGB(0xc0, 0xd5, 0xed)};
++    mixer[kColorTabBackgroundActiveFrameActive] = {SkColorSetRGB(0x17, 0x3b, 0x61)};
++    mixer[kColorTabForegroundActiveFrameActive] = {SkColorSetRGB(0xe2, 0xe8, 0xf0)};
++  }
+ }

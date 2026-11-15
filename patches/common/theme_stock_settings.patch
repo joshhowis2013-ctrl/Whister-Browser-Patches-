@@ -1,0 +1,149 @@
+diff --git a/chrome/browser/resources/settings/settings_vars.css b/chrome/browser/resources/settings/settings_vars.css
+--- a/chrome/browser/resources/settings/settings_vars.css
++++ b/chrome/browser/resources/settings/settings_vars.css
+@@ -24,2 +24,15 @@ html {
+   --cr-radio-group-item-padding: 0;
++  --settings-whister-accent-color: rgb(37, 99, 235);
++  --settings-whister-accent-hover-color: rgb(29, 78, 216);
++  --settings-whister-page-background: rgb(238, 245, 255);
++  --settings-whister-sidebar-background: rgba(233, 241, 255, .92);
++  --settings-whister-toolbar-background: rgb(20, 45, 88);
++  --cr-link-color: var(--settings-whister-accent-color);
++  --cr-focus-outline-color: var(--settings-whister-accent-color);
++  --color-settings-webui-page-background: var(--settings-whister-page-background);
++  --color-settings-section-background: rgba(255, 255, 255, .78);
++  --color-settings-title-text: rgb(23, 45, 79);
++  --color-settings-nav-menu-item-foreground: rgb(37, 54, 82);
++  --color-settings-nav-menu-item-icon: rgb(42, 78, 126);
++  --color-toolbar-search-field-text-color: white;
+ }
+@@ -28,6 +41,19 @@ html {
+ @media (prefers-color-scheme: dark) {
+   html {
+     --iron-icon-fill-color: var(--google-grey-500);
+     --settings-error-color: var(--google-red-300);
++    --settings-whister-accent-color: rgb(96, 165, 250);
++    --settings-whister-accent-hover-color: rgb(147, 197, 253);
++    --settings-whister-page-background: rgb(10, 17, 30);
++    --settings-whister-sidebar-background: rgba(13, 26, 47, .94);
++    --settings-whister-toolbar-background: rgb(13, 33, 65);
++    --color-settings-webui-page-background: var(--settings-whister-page-background);
++    --color-settings-section-background: rgba(20, 34, 57, .78);
++    --color-settings-title-text: rgb(229, 240, 255);
++    --color-settings-nav-menu-item-foreground: rgb(216, 231, 251);
++    --color-settings-nav-menu-item-icon: rgb(168, 201, 244);
++    --color-toolbar-search-field-text-color: white;
++    --color-sys-primary: var(--settings-whister-accent-color);
++    --color-sys-primary-container: rgba(96, 165, 250, .20);
+   }
+ }
+diff --git a/chrome/browser/resources/settings/settings_ui/settings_ui.css b/chrome/browser/resources/settings/settings_ui/settings_ui.css
+--- a/chrome/browser/resources/settings/settings_ui/settings_ui.css
++++ b/chrome/browser/resources/settings/settings_ui/settings_ui.css
+@@ -24,3 +24,14 @@
+   --settings-main-basis: calc(var(--cr-centered-card-max-width) /
+       var(--cr-centered-card-width-percentage));
++  background:
++      radial-gradient(900px 640px at 88% -12%, rgba(37, 99, 235, .20),
++                      transparent 70%),
++      radial-gradient(720px 540px at 0% 100%, rgba(34, 184, 207, .08),
++                      transparent 72%),
++      var(--settings-whister-page-background);
++  --cr-toolbar-background-color: var(--settings-whister-toolbar-background);
++  --cr-toolbar-text-color: white;
++  --cr-toolbar-search-field-background-color: rgba(255, 255, 255, .16);
++  --cr-toolbar-search-field-text-color: white;
++  --cr-toolbar-search-field-icon-color: white;
+ }
+@@ -88,4 +94,7 @@
+ #left settings-menu {
++  background: var(--settings-whister-sidebar-background);
++  backdrop-filter: blur(18px);
++  border-inline-end: 1px solid rgba(96, 165, 250, .18);
+   max-height: 100%;
+   overflow: auto;
+   overscroll-behavior: contain;
+diff --git a/chrome/browser/resources/settings/settings_menu/settings_menu.css b/chrome/browser/resources/settings/settings_menu/settings_menu.css
+--- a/chrome/browser/resources/settings/settings_menu/settings_menu.css
++++ b/chrome/browser/resources/settings/settings_menu/settings_menu.css
+@@ -15,4 +15,5 @@
+ :host {
++  background: var(--settings-whister-sidebar-background);
+   box-sizing: border-box;
+   display: block;
+   padding-bottom: 5px; /* Prevents focus outlines from being cropped. */
+@@ -56,4 +57,7 @@
+ #menu {
++  --cr-nav-menu-item-background-color-selected: rgba(96, 165, 250, .14);
++  --cr-nav-menu-item-color-selected: var(--settings-whister-accent-color);
++  --cr-nav-menu-item-icon-color-selected: var(--settings-whister-accent-color);
+   color: var(--google-grey-700);
+   display: flex;
+   flex-direction: column;
+diff --git a/chrome/browser/resources/settings/settings_shared_lit.css b/chrome/browser/resources/settings/settings_shared_lit.css
+--- a/chrome/browser/resources/settings/settings_shared_lit.css
++++ b/chrome/browser/resources/settings/settings_shared_lit.css
+@@ -15,9 +15,12 @@
+ :host-context([settings-refresh-2026]) {
++  --color-settings-nav-menu-item-background: rgba(96, 165, 250, .14);
++  --color-settings-nav-menu-item-foreground-selected:
++      var(--settings-whister-accent-color);
+   --cr-active-background-color: var(--color-settings-row-background-active);
+   --cr-card-border-radius: 16px;
+   --cr-hover-background-color: var(--color-settings-row-background-hovered);
+   --cr-section-vertical-padding: 16px;
+   --cr-card-background-color: transparent;
+   --cr-card-shadow: none;
+   --cr-separator-line: none;
+   --cr-title-text-color: var(--color-settings-title-text);
+@@ -48,6 +48,10 @@
+   .cr-row,
+   .list-frame {
+-    background-color: var(--color-settings-section-background);
++    background: linear-gradient(135deg,
++        var(--color-settings-section-background),
++        rgba(37, 99, 235, .08));
++    backdrop-filter: blur(14px);
++    border: 1px solid rgba(96, 165, 250, .12);
+   }
+ 
+   .list-frame {
+diff --git a/chrome/browser/resources/settings/about_page/about_page.css b/chrome/browser/resources/settings/about_page/about_page.css
+--- a/chrome/browser/resources/settings/about_page/about_page.css
++++ b/chrome/browser/resources/settings/about_page/about_page.css
+@@ -31,3 +31,5 @@
+ #productLogo {
++  border-radius: 10px;
++  box-shadow: 0 4px 14px rgba(37, 99, 235, .28);
+   margin-inline-end: var(--about-page-image-space);
+ }
+diff --git a/chrome/browser/resources/settings/about_page/about_page.html.ts b/chrome/browser/resources/settings/about_page/about_page.html.ts
+--- a/chrome/browser/resources/settings/about_page/about_page.html.ts
++++ b/chrome/browser/resources/settings/about_page/about_page.html.ts
+@@ -91,7 +91,26 @@ export function getHtml(this: SettingsAboutPageElement) {
+   </div>
+   ${!this.settingsRefresh2026Enabled_ ? getActionRowsHtml.bind(this)() : ''}
+ </settings-section>
++
++<settings-section page-title="Whister">
++  <div class="cr-row two-line">
++    <div class="flex cr-padded-text">
++      <div class="heading">Whister updates</div>
++      <div class="secondary">
++        Check for beta builds, verify the installer, and launch it when ready.
++      </div>
++    </div>
++    <a class="secondary" href="whister://whister-settings#about">Open updater</a>
++  </div>
++  <div class="cr-row two-line">
++    <div class="flex cr-padded-text">
++      <div class="heading">Whister settings</div>
++      <div class="secondary">Open the full set of Whister browser settings.</div>
++    </div>
++    <a class="secondary" href="whister://whister-settings">Open settings</a>
++  </div>
++</settings-section>
+ 
+ ${this.settingsRefresh2026Enabled_ ? html`
+   <settings-section>
+     ${getActionRowsHtml.bind(this)()}

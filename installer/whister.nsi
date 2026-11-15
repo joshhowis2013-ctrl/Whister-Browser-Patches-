@@ -1,4 +1,4 @@
-﻿; Whister Browser installer (NSIS). Build with package_installer.ps1.
+; Whister Browser installer (NSIS). Build with package_installer.ps1.
 Unicode true
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
@@ -30,7 +30,10 @@ BrandingText "Whister Browser"
 !define MUI_FINISHPAGE_RUN "$INSTDIR\chrome.exe"
 !define MUI_FINISHPAGE_RUN_TEXT "Launch Whister"
 
+InstType "Standard"
+
 !insertmacro MUI_PAGE_WELCOME
+!insertmacro MUI_PAGE_COMPONENTS
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
@@ -64,13 +67,22 @@ Section "Whister Browser" SecMain
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   WriteRegStr HKCU "Software\Whister" "InstallDir" "$INSTDIR"
 
+  CreateDirectory "$LOCALAPPDATA\Whister\Updater"
+  IfFileExists "$LOCALAPPDATA\Whister\Updater\WhisterUpdater.exe" updater_binary_present
+  SetOutPath "$LOCALAPPDATA\Whister\Updater"
+  File "${STAGE}\WhisterUpdater.exe"
+updater_binary_present:
+  SetOutPath "$LOCALAPPDATA\Whister\Updater"
+  File "${STAGE}\updater-config.json"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Whister Browser Update" '"$LOCALAPPDATA\Whister\Updater\WhisterUpdater.exe" --check'
+
   CreateDirectory "$SMPROGRAMS\Whister"
   CreateShortcut "$SMPROGRAMS\Whister\Whister.lnk" "$INSTDIR\chrome.exe"
   CreateShortcut "$SMPROGRAMS\Whister\Uninstall Whister.lnk" "$INSTDIR\Uninstall.exe"
-  CreateShortcut "$DESKTOP\Whister.lnk" "$INSTDIR\chrome.exe"
 
   Goto appcontainer_acl_configured
 appcontainer_acl_failed:
+  SetErrorLevel 1
   MessageBox MB_ICONSTOP|MB_OK "Windows could not grant the browser sandbox access to its install files. Whister was not installed."
   Abort
 appcontainer_acl_configured:
@@ -84,10 +96,17 @@ appcontainer_acl_configured:
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Whister" "NoRepair" 1
 SectionEnd
 
+Section /o "Desktop shortcut" SecDesktop
+  SectionIn 1
+  CreateShortcut "$DESKTOP\Whister.lnk" "$INSTDIR\chrome.exe"
+SectionEnd
+
 Section "Uninstall"
+  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Whister Browser Update"
   Delete "$DESKTOP\Whister.lnk"
   RMDir /r "$SMPROGRAMS\Whister"
   RMDir /r "$INSTDIR"
   DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Whister"
   DeleteRegKey HKCU "Software\Whister"
+  RMDir /r "$LOCALAPPDATA\Whister\Updater"
 SectionEnd
