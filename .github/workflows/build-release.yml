@@ -9,7 +9,11 @@ on:
       bucket_name:
         description: 'Cloudflare R2 bucket name'
         required: true
-        default: 'whister-updates'
+        default: 'whister-beta-updates'
+
+defaults:
+  run:
+    shell: powershell -NoProfile -ExecutionPolicy Bypass -Command "& '{0}'"
 
 jobs:
   build-and-publish:
