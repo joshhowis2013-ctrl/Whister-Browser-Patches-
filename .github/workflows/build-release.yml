@@ -23,7 +23,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Whister build script
-        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\update_and_build.ps1
+        shell: powershell
+        run: .\update_and_build.ps1 -Channel Beta
 
       - name: Sign installer and generate manifest
         env:
