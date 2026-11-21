@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Whister release version (e.g. 160.0.8157.0)'
+        description: 'Whister release version (e.g. 160.0.8171.0)'
         required: true
       bucket_name:
         description: 'Cloudflare R2 bucket name'
@@ -19,11 +19,11 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Whister build script
-        shell: pwsh
+        shell: powershell
         run: .\update_and_build.ps1
 
       - name: Sign installer and generate manifest
-        shell: pwsh
+        shell: powershell
         env:
           MANIFEST_PRIVATE_KEY: ${{ secrets.WHISTER_MANIFEST_PRIVATE_KEY }}
         run: |
@@ -45,7 +45,7 @@ jobs:
           }
 
       - name: Upload to Cloudflare R2
-        shell: pwsh
+        shell: powershell
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
