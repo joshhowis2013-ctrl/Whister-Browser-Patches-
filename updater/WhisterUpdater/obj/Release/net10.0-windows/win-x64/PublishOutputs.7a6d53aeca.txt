@@ -1,0 +1,3 @@
+C:\whister-browser\dist\updater-publish\WhisterUpdater.pdb
+C:\whister-browser\dist\updater-publish\updater-config.json
+C:\whister-browser\dist\updater-publish\WhisterUpdater.exe

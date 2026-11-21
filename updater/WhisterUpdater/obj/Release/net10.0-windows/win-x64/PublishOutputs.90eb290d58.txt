@@ -1,0 +1,3 @@
+C:\Users\Joshua\AppData\Local\Temp\whister-updater-publish\WhisterUpdater.pdb
+C:\Users\Joshua\AppData\Local\Temp\whister-updater-publish\updater-config.json
+C:\Users\Joshua\AppData\Local\Temp\whister-updater-publish\WhisterUpdater.exe
