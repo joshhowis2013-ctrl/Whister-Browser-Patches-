@@ -1,42 +1,94 @@
 diff --git a/chrome/app/chromium_strings.grd b/chrome/app/chromium_strings.grd
+index 752d2dd80942e..a53b4f31c5a9b 100644
 --- a/chrome/app/chromium_strings.grd
 +++ b/chrome/app/chromium_strings.grd
-@@ -1170 +1170 @@
+@@ -1167,7 +1167,7 @@ Chromium is unable to recover your settings.
+       <!-- Page menu. Android has separate strings for its menu -->
+       <if expr="not is_android">
+         <message name="IDS_CUSTOMIZE_CHROME" desc="The text label of the Customize Chrome menu item">
 -          C&amp;ustomize your Chromium
 +          C&amp;ustomize Whister
-@@ -1280 +1280 @@
+         </message>
+         <message name="IDS_OTHER_CHROME_PROFILES_TITLE" desc="The title of the Other Chrome profiles section">
+           Other Chromium profiles
+@@ -1277,35 +1277,35 @@ Chromium is unable to recover your settings.
+       <if expr="_is_chrome_for_testing_branded">
+         <then>
+           <message name="IDS_NTP_CUSTOMIZE_BUTTON_LABEL" desc="Label for button on the New Tab Page that opens dialog to customize Chrome for Testing browser.">
 -            Customize Chrome for Testing
 +            Customize Whister
-@@ -1285 +1285 @@
+           </message>
+         </then>
+         <else>
+           <message name="IDS_NTP_CUSTOMIZE_BUTTON_LABEL" desc="Label for button on the New Tab Page that opens dialog to customize Chromium browser.">
 -            Customize Chromium
 +            Customize Whister
-@@ -1290 +1290 @@
+           </message>
+         </else>
+       </if>
+       <message name="IDS_NTP_MODULES_SETUP_LIST_TITLE" desc="Title shown at the top of the Setup List card.">
 -        Make Chromium Yours
 +        Make Whister Yours
-@@ -1293 +1293 @@
+       </message>
+       <message name="IDS_NTP_CUSTOMIZE_CHROME_RESET_TO_CLASSIC_CHROME_LABEL" desc="The label for the button for resetting theme back to default chrome in the New Tab Page customize chrome side panel.">
 -        Reset to Default Chromium
 +        Reset to Whister Defaults
-@@ -1299 +1299 @@
+       </message>
+ 
+       <!-- New Tab Page browser feature promotions. -->
+       <if expr="not is_android">
+         <message name="IDS_NTP_CUSTOMIZATION_PROMO" desc="The text shown in the body of the New Tab Page browser customization promotion">
 -          Customize Chromium to give your browser a new look
 +          Customize Whister to give your browser a new look
-@@ -1305 +1305 @@
+         </message>
+       </if>
+ 
+       <!-- Customize Chrome Auto Promo Strings -->
+-      <message name="IDS_IPH_CUSTOMIZE_CHROME_AUTO_OPEN_BODY" desc="The description of the IPH to auto open Customize Chromium">
 -        Customize Chromium to give it a new look
++      <message name="IDS_IPH_CUSTOMIZE_CHROME_AUTO_OPEN_BODY" desc="The description of the IPH to auto open Customize Whister">
 +        Customize Whister to give it a new look
-@@ -1308 +1308 @@
+       </message>
+-      <message name="IDS_IPH_CUSTOMIZE_CHROME_AUTO_OPEN_SCREENREADER" desc="The screenreader of the IPH to auto open Customize Chromium" is_accessibility_with_no_ui="true">
 -        Click the Customize Chromium button on the New Tab Page to give Chromium a new look
++      <message name="IDS_IPH_CUSTOMIZE_CHROME_AUTO_OPEN_SCREENREADER" desc="The screenreader of the IPH to auto open Customize Whister" is_accessibility_with_no_ui="true">
 +        Click the Customize Whister button on the New Tab Page to give Whister a new look
-@@ -1926 +1926 @@
+       </message>
+ 
+       <!-- Realbox Strings -->
+@@ -1898,7 +1898,7 @@ Chromium is unable to recover your settings.
+ 
+       <!-- Side panel strings -->
+       <message name="IDS_SIDE_PANEL_CUSTOMIZE_CHROME_TITLE" desc="The name of the Customize Chrome feature in the side panel combo box.">
 -        Customize Chromium
 +        Customize Whister
+       </message>
+ 
+       <!-- History Strings -->
 diff --git a/chrome/app/generated_resources.grd b/chrome/app/generated_resources.grd
+index fb791c67e064d..bab5c827dfd5b 100644
 --- a/chrome/app/generated_resources.grd
 +++ b/chrome/app/generated_resources.grd
-@@ -8917 +8917 @@
+
+@@ -8767,7 +8767,7 @@ Keep your key file in a safe place. You will need it to create new versions of y
+         Please try again later
+       </message>
+       <message name="IDS_SHOW_CUSTOMIZE_CHROME_SIDE_PANEL" desc="The title of the menu item for showing the Customize Chrome side panel.">
 -        Customize Chrome
 +        Customize Whister
-@@ -10804 +10804 @@
+       </message>
+       <if expr="use_titlecase">
+         <message name="IDS_SHOW_CUSTOMIZE_CHROME_TOOLBAR" desc="The title of the menu item for showing the toolbar section of the Customize Chrome side panel.">
+@@ -10654,10 +10654,10 @@ Keep your key file in a safe place. You will need it to create new versions of y
+ 
+       <!-- Customize Chrome Tutorial Strings -->
+       <message name="IDS_TUTORIAL_CUSTOMIZE_CHROME_START_TUTORIAL_IPH" desc="The description of the IPH to start the customize chrome tutorial">
 -        Customize Chrome to give your browser a new look
 +        Customize Whister to give your browser a new look
-@@ -10807 +10807 @@
+       </message>
+       <message name="IDS_TUTORIAL_CUSTOMIZE_CHROME_OPEN_SIDE_PANEL" desc="The description of the 'open side panel' step in customize chrome tutorial">
 -        Click "Customize Chrome"
 +        Click "Customize Whister"
+       </message>
+       <message name="IDS_TUTORIAL_CUSTOMIZE_CHROME_CHANGE_THEME" desc="The description of the 'change theme' step in customize chrome tutorial">
+         Click “Change theme” to explore themes inspired by artists, nature and more
