@@ -13,11 +13,11 @@ $ChromiumSrcDir = "C:\chromium\src"
 $MyRepoDir = "C:\whister-browser"
 
 if ($Channel -eq "stable") {
-    $TargetChromiumVersion = "refs/tags/154.0.8037.98"
+    $TargetChromiumVersion = "refs/tags/158.0.8127.37"
     $BuildOutPath = "out\StableRelease"
     $ConfigFile = "$MyRepoDir\config\stable_args.gn"
 } else {
-    $TargetChromiumVersion = "refs/tags/158.0.8105.0"
+    $TargetChromiumVersion = "refs/tags/160.0.8171.0"
     $BuildOutPath = "out\BetaRelease"
     $ConfigFile = "$MyRepoDir\config\beta_args.gn"
 }
@@ -47,9 +47,13 @@ gclient sync --with_branch_heads --with_tags --jobs=4 --force --no-history
 Write-Host ">>> Merging shared features..." -ForegroundColor Cyan
 $EnabledCommonPatchNames = @(
     "custom_omnibox_placeholder.patch",
+    "degoogle_missing_api_keys_infobar.patch",
     "degoogle_settings_interface.patch",
     "theme_native_top_bar.patch",
     "inject_whister_theme.patch",
+    "theme_stock_settings.patch",
+    "degoogle_stock_settings.patch",
+    "whister_customize_chrome.patch",
     "whister_settings_page.patch"
 )
 if (-not $UseStockNewTab) {
@@ -57,6 +61,8 @@ if (-not $UseStockNewTab) {
 } else {
     Write-Host ">>> Using Chromium's stock new-tab page as fallback." -ForegroundColor Yellow
 }
+$EnabledCommonPatchNames += "whister_url_scheme.patch"
+$EnabledCommonPatchNames += "whister_ubo.patch"
 $CommonPatches = foreach ($PatchName in $EnabledCommonPatchNames) {
     $PatchPath = Join-Path "$MyRepoDir\patches\common" $PatchName
     if (-not (Test-Path $PatchPath)) {
@@ -76,7 +82,7 @@ $ChannelPatches = Get-ChildItem -Path "$MyRepoDir\patches\$Channel\*.patch" -Err
 if ($CommonPatches) {
     foreach ($Patch in $CommonPatches) {
         Write-Host "Applying Base: $($Patch.Name)" -ForegroundColor Green
-        git apply --unidiff-zero --recount --ignore-space-change "$($Patch.FullName)"
+        git apply  --ignore-whitespace --unidiff-zero --recount --ignore-space-change "$($Patch.FullName)"
         if ($LASTEXITCODE -ne 0) {
             throw "Patch $($Patch.Name) failed to apply. Stopping so an incomplete Whister build is not produced."
         }
@@ -96,17 +102,38 @@ if ($ChannelPatches) {
 # Layer C: Custom Brand Image Asset Overlays (PNG + ICO)
 $CustomAssetsDir = "$MyRepoDir\branding\common\Assets"
 $GoogleThemeDir = "$ChromiumSrcDir\chrome\app\theme\chromium"
+$BrandingImageDir = "$ChromiumSrcDir\chrome\app\theme\default_100_percent\chromium"
 
 if (Test-Path $CustomAssetsDir) {
     Write-Host ">>> Overwriting default logo assets and Windows binaries with Whister branding graphics..." -ForegroundColor Green
     # Copy all PNGs and the Windows .ico file directly over the defaults
     Copy-Item -Path "$CustomAssetsDir\*.*" -Destination $GoogleThemeDir -Force
-}
+    Copy-Item -Path "$CustomAssetsDir\product_logo_32.png" `
+        -Destination "$GoogleThemeDir\product_logo_32_beta.png" -Force
 
+    foreach ($LogoFileName in @("product_logo_32.png", "product_logo_32_beta.png")) {
+        Copy-Item -Path "$CustomAssetsDir\product_logo_32.png" `
+            -Destination "$BrandingImageDir\$LogoFileName" -Force
+    }
+
+    foreach ($LogoPath in @(
+        "$GoogleThemeDir\product_logo_32.png",
+        "$GoogleThemeDir\product_logo_32_beta.png",
+        "$BrandingImageDir\product_logo_32.png",
+        "$BrandingImageDir\product_logo_32_beta.png"
+    )) {
+        if (Test-Path $LogoPath) {
+            (Get-Item $LogoPath).LastWriteTimeUtc = [DateTime]::UtcNow
+        }
+    }
+}
 $WhisterNewTabSrc = "$MyRepoDir\branding\common\new_tab_page"
 $WhisterNewTabDest = "$ChromiumSrcDir\chrome\browser\resources\whister_new_tab"
 New-Item -ItemType Directory -Path $WhisterNewTabDest -Force | Out-Null
-foreach ($FileName in @("settings.html", "settings.css", "settings.js", "setup.html", "index.html", "style.css", "app.js")) {
+if (Test-Path (Join-Path $WhisterNewTabDest "blocker.html")) {
+    Remove-Item -LiteralPath (Join-Path $WhisterNewTabDest "blocker.html") -Force
+}
+foreach ($FileName in @("settings.html", "settings.css", "settings.js", "setup.html", "index.html", "style.css", "app.js", "whister-logo.png")) {
     $SourceFile = Join-Path $WhisterNewTabSrc $FileName
     if (-not (Test-Path $SourceFile)) {
         throw "Required Whister settings asset is missing: $SourceFile"
@@ -146,6 +173,9 @@ foreach ($LegacyManifest in $LegacyExtensionManifests) {
 # Copy the corresponding .gn file directly into the compilation target root
 Copy-Item -Path $ConfigFile -Destination "$FullOutDirectory\args.gn" -Force
 Write-Host ">>> Configurations successfully applied to $BuildOutPath\args.gn" -ForegroundColor Green
+
+$UBlockBuildScript = Join-Path $MyRepoDir "prepare_ublock.ps1"
+& $UBlockBuildScript -ChromiumBuildDir $FullOutDirectory
 
 # 6. GENERATE BUILD TARGET ARCHITECTURE FILES AND COMPILE
 Write-Host ">>> Running GN Build File Generator..." -ForegroundColor Cyan

@@ -1,0 +1,7 @@
+C:\Users\Joshua\.copilot\session-state\3e3f6644-afb2-4cde-b50f-07a2594d1123\files\animated-ui-validation\WhisterAnimatedSetup.pdb
+C:\Users\Joshua\.copilot\session-state\3e3f6644-afb2-4cde-b50f-07a2594d1123\files\animated-ui-validation\D3DCompiler_47_cor3.dll
+C:\Users\Joshua\.copilot\session-state\3e3f6644-afb2-4cde-b50f-07a2594d1123\files\animated-ui-validation\PenImc_cor3.dll
+C:\Users\Joshua\.copilot\session-state\3e3f6644-afb2-4cde-b50f-07a2594d1123\files\animated-ui-validation\PresentationNative_cor3.dll
+C:\Users\Joshua\.copilot\session-state\3e3f6644-afb2-4cde-b50f-07a2594d1123\files\animated-ui-validation\vcruntime140_cor3.dll
+C:\Users\Joshua\.copilot\session-state\3e3f6644-afb2-4cde-b50f-07a2594d1123\files\animated-ui-validation\wpfgfx_cor3.dll
+C:\Users\Joshua\.copilot\session-state\3e3f6644-afb2-4cde-b50f-07a2594d1123\files\animated-ui-validation\WhisterAnimatedSetup.exe

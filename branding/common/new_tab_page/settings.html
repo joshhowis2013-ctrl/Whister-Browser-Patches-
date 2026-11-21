@@ -9,7 +9,7 @@
 <body>
   <div class="glow" aria-hidden="true"></div>
   <div class="layout">
-    <nav class="side">
+    <nav class="side" aria-label="Settings sections">
       <div class="brand"><span class="mark">W</span><span>Whister</span></div>
       <a href="#search">Search</a>
       <a href="#appearance">Appearance</a>
@@ -19,6 +19,7 @@
       <a href="#languages">Languages</a>
       <a href="#downloads">Downloads</a>
       <a href="#about">About</a>
+      <a href="whister://settings" data-webui-navigate>Chromium Settings</a>
     </nav>
     <main>
       <header>
@@ -147,20 +148,27 @@
 
         <h2>Updates</h2>
         <div class="panel">
-          <div class="row static"><span><b>Manual updates</b><small>This is the way to get the latest build manually. for now...</small></span>
-            <a class="pill" href="https://whisterbeta.whisterbrowser.com/" data-webui-navigate>Get latest build</a></div>
+          <div class="row static"><span><b>Latest beta builds</b><small>Browse the current Whister release and installer.</small></span>
+            <a id="latest-build-link" class="pill" href="https://whisterbeta.whisterbrowser.com/" data-webui-navigate>Get latest build</a></div>
         </div>
-        
-<div class="panel">
-  <div class="row static">
-    <span>
-      <strong>Check for updates (automatic) <em class="tag">Beta</em></strong>
-      <small id="update-status-text">Whister is up to date.</small>
-    </span>
-    <button id="check-updates-btn" class="whister-btn-primary">Check version</button>
-  </div>
-</div>
 
+        <div class="panel">
+          <div class="row static">
+            <span>
+              <b>Check for updates</b>
+              <small id="update-status-text" aria-live="polite">Check the beta feed for a newer version.</small>
+            </span>
+            <button id="check-updates-btn" class="whister-btn-primary">Check now</button>
+          </div>
+          <div class="row static" id="update-download-row" hidden>
+            <span><b>Verify installer</b><small>Download the release and compare its SHA-256 checksum. It will not install until you choose.</small></span>
+            <button id="download-verify-btn" class="whister-btn-primary">Download &amp; verify</button>
+          </div>
+          <div class="row static" id="update-install-row" hidden>
+            <span><b>SHA-256 verified</b><small id="update-sha256"></small></span>
+            <button id="install-verified-btn" class="whister-btn-primary">Open installer</button>
+          </div>
+        </div>
 
         <h2>Version details</h2>
         <div class="panel">

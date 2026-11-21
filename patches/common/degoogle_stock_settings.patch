@@ -1,0 +1,162 @@
+diff --git a/chrome/app/chromium_strings.grd b/chrome/app/chromium_strings.grd
+index 752d2dd80942e..19a7c04d36992 100644
+--- a/chrome/app/chromium_strings.grd
++++ b/chrome/app/chromium_strings.grd
+@@ -294,10 +294,10 @@ If you update this file, be sure also to update google_chrome_strings.grd. -->
+         </then>
+         <else>
+           <message name="IDS_PRODUCT_NAME" desc="The Chrome application name" translateable="false">
+-            Chromium
++            Whister Browser
+           </message>
+           <message name="IDS_SHORT_PRODUCT_NAME" desc="The Chrome application short name." translateable="false">
+-            Chromium
++            Whister
+           </message>
+         </else>
+       </if>
+@@ -1167,7 +1167,7 @@ Chromium is unable to recover your settings.
+       <!-- Page menu. Android has separate strings for its menu -->
+       <if expr="not is_android">
+         <message name="IDS_CUSTOMIZE_CHROME" desc="The text label of the Customize Chrome menu item">
+-          C&amp;ustomize your Chromium
++          C&amp;ustomize Whister
+         </message>
+         <message name="IDS_OTHER_CHROME_PROFILES_TITLE" desc="The title of the Other Chrome profiles section">
+           Other Chromium profiles
+@@ -1277,35 +1277,35 @@ Chromium is unable to recover your settings.
+       <if expr="_is_chrome_for_testing_branded">
+         <then>
+           <message name="IDS_NTP_CUSTOMIZE_BUTTON_LABEL" desc="Label for button on the New Tab Page that opens dialog to customize Chrome for Testing browser.">
+-            Customize Chrome for Testing
++            Customize Whister
+           </message>
+         </then>
+         <else>
+           <message name="IDS_NTP_CUSTOMIZE_BUTTON_LABEL" desc="Label for button on the New Tab Page that opens dialog to customize Chromium browser.">
+-            Customize Chromium
++            Customize Whister
+           </message>
+         </else>
+       </if>
+       <message name="IDS_NTP_MODULES_SETUP_LIST_TITLE" desc="Title shown at the top of the Setup List card.">
+-        Make Chromium Yours
++        Make Whister Yours
+       </message>
+       <message name="IDS_NTP_CUSTOMIZE_CHROME_RESET_TO_CLASSIC_CHROME_LABEL" desc="The label for the button for resetting theme back to default chrome in the New Tab Page customize chrome side panel.">
+-        Reset to Default Chromium
++        Reset to Whister Defaults
+       </message>
+ 
+       <!-- New Tab Page browser feature promotions. -->
+       <if expr="not is_android">
+         <message name="IDS_NTP_CUSTOMIZATION_PROMO" desc="The text shown in the body of the New Tab Page browser customization promotion">
+-          Customize Chromium to give your browser a new look
++          Customize Whister to give your browser a new look
+         </message>
+       </if>
+ 
+       <!-- Customize Chrome Auto Promo Strings -->
+       <message name="IDS_IPH_CUSTOMIZE_CHROME_AUTO_OPEN_BODY" desc="The description of the IPH to auto open Customize Chromium">
+-        Customize Chromium to give it a new look
++        Customize Whister to give it a new look
+       </message>
+       <message name="IDS_IPH_CUSTOMIZE_CHROME_AUTO_OPEN_SCREENREADER" desc="The screenreader of the IPH to auto open Customize Chromium" is_accessibility_with_no_ui="true">
+-        Click the Customize Chromium button on the New Tab Page to give Chromium a new look
++        Click the Customize Whister button on the New Tab Page to give Whister a new look
+       </message>
+ 
+       <!-- Realbox Strings -->
+@@ -1898,7 +1898,7 @@ Chromium is unable to recover your settings.
+ 
+       <!-- Side panel strings -->
+       <message name="IDS_SIDE_PANEL_CUSTOMIZE_CHROME_TITLE" desc="The name of the Customize Chrome feature in the side panel combo box.">
+-        Customize Chromium
++        Customize Whister
+       </message>
+ 
+       <!-- History Strings -->
+diff --git a/chrome/app/settings_chromium_strings.grdp b/chrome/app/settings_chromium_strings.grdp
+index 0ea364b094022..12b584627e5e9 100644
+--- a/chrome/app/settings_chromium_strings.grdp
++++ b/chrome/app/settings_chromium_strings.grdp
+@@ -18,11 +18,11 @@
+       </message>
+     </then>
+     <else>
+-      <message name="IDS_SETTINGS_ABOUT_PROGRAM" desc="Menu title for the About Chromium page.">
+-        About Chromium
++      <message name="IDS_SETTINGS_ABOUT_PROGRAM" desc="Menu title for the About Whister page.">
++        About Whister
+       </message>
+       <message name="IDS_SETTINGS_GET_HELP_USING_CHROME" desc="Text of the button which takes the user to the Chrome help page.">
+-        Get help with Chromium
++        Get help with Whister
+       </message>
+     </else>
+   </if>
+@@ -413,7 +413,7 @@
+     </else>
+   </if>
+   <message name="IDS_SETTINGS_SAFETY_HUB_VERSION_NAVIGATION_ARIA_LABEL" desc="Safety Check settings page (chrome://settings/safetyCheck) gives users an overview over their safety status. The version card, which this text is a part of, informs the user whether their Chrome is up to date. This string is for the accesibility label for the card to call out where to navigation will happen (chrome://settings/help) if the card is clicked.">
+-    Go to About Chromium page
++    Go to About Whister page
+   </message>
+   <message name="IDS_SETTINGS_SAFETY_HUB_VERSION_RELAUNCH_ARIA_LABEL" desc="Safety Check settings page (chrome://settings/safetyCheck) gives users an overview over their safety status. The version card, which this text is a part of, informs the user whether their Chrome is up to date. This string is for the accesibility label for the card to call out the click on card will result restarting the browser.">
+     Relaunch Chromium
+diff --git a/chrome/app/settings_strings.grdp b/chrome/app/settings_strings.grdp
+index 58b7213a06dd9..b7ed4d712f09a 100644
+--- a/chrome/app/settings_strings.grdp
++++ b/chrome/app/settings_strings.grdp
+@@ -3309,13 +3309,13 @@
+ 
+     <!-- Sync / People Page -->
+     <message name="IDS_SETTINGS_PEOPLE" desc="Name of the settings page which manages the user's relationship to Google.">
+-      You and Google
++      Profile
+     </message>
+     <message name="IDS_SETTINGS_CHANGE_PICTURE_PROFILE_PHOTO" desc="The text on the Google profile photo of the user.">
+       Google Profile photo
+     </message>
+ 
+-    <message name="IDS_SETTINGS_PEOPLE_VERIFY_ACCOUNT_BUTTON" desc="This button is shown in Chrome's Settings, in the 'You and Google' section. It appears when the user needs to sign back in to Chrome in order to continue saving and using data (like bookmarks, passwords, or payment methods) in their Google Account. When the user clicks this button, they will be prompted to enter their Google Account credentials.">
++    <message name="IDS_SETTINGS_PEOPLE_VERIFY_ACCOUNT_BUTTON" desc="This button is shown in Chrome's Settings, in the 'Profile' section. It appears when the user needs to sign back in to Chrome in order to continue saving and using data (like bookmarks, passwords, or payment methods) in their Google Account. When the user clicks this button, they will be prompted to enter their Google Account credentials.">
+       Verify it's you
+     </message>
+     <message name="IDS_SETTINGS_TURN_OFF_SYNC_AND_SIGN_OUT_DIALOG_TITLE" desc="The text to display on the title of the dialog to turn off sync and sign out.">
+diff --git a/chrome/browser/resources/settings/settings_menu/settings_menu.html.ts b/chrome/browser/resources/settings/settings_menu/settings_menu.html.ts
+index 90c50ff9a7873..2a6c7eed1017e 100644
+--- a/chrome/browser/resources/settings/settings_menu/settings_menu.html.ts
++++ b/chrome/browser/resources/settings/settings_menu/settings_menu.html.ts
+@@ -59,7 +59,7 @@ export function getHtml(this: SettingsMenuElement) {
+       <cr-ripple></cr-ripple>
+     </a>
+     <a role="menuitem" id="ai" href="/ai"
+-        ?hidden="${!this.showAiPageMenuItem_()}"
++        hidden
+         class="cr-nav-menu-item menu-item">
+       <cr-icon icon="settings20:button-magic"></cr-icon>
+       <span class="menu-label">$i18n{aiPageTitle}</span>
+diff --git a/ui/webui/resources/cr_elements/cr_toolbar/cr_toolbar.html.ts b/ui/webui/resources/cr_elements/cr_toolbar/cr_toolbar.html.ts
+index b2004a0e69873..2e0d4d340cdda 100644
+--- a/ui/webui/resources/cr_elements/cr_toolbar/cr_toolbar.html.ts
++++ b/ui/webui/resources/cr_elements/cr_toolbar/cr_toolbar.html.ts
+@@ -18,14 +18,10 @@ export function getHtml(this: CrToolbarElement) {
+       </cr-icon-button>
+     ` : ''}
+     <slot name="product-logo">
+-      <picture>
+-        <source media="(prefers-color-scheme: dark)"
+-            srcset="//resources/images/chrome_logo_dark.svg">
+-        <img id="product-logo"
+-            srcset="chrome://theme/current-channel-logo@1x 1x,
+-                    chrome://theme/current-channel-logo@2x 2x"
+-            role="presentation">
+-      </picture>
++      <img id="product-logo"
++          srcset="chrome://theme/current-channel-logo@1x 1x,
++                  chrome://theme/current-channel-logo@2x 2x"
++          role="presentation">
+     </slot>
+     <h1>${this.pageName}</h1>
+   </div>

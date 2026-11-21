@@ -53,7 +53,8 @@
         <fieldset>
             <legend>Accent</legend>
             <div class="accent-choices" role="group" aria-label="Accent color">
-                <button class="accent-choice accent-violet" type="button" data-accent-choice="violet" aria-label="Violet accent" aria-pressed="true"></button>
+                <button class="accent-choice accent-blue" type="button" data-accent-choice="blue" aria-label="Blue accent" aria-pressed="true"></button>
+                <button class="accent-choice accent-violet" type="button" data-accent-choice="violet" aria-label="Violet accent" aria-pressed="false"></button>
                 <button class="accent-choice accent-cyan" type="button" data-accent-choice="cyan" aria-label="Cyan accent" aria-pressed="false"></button>
                 <button class="accent-choice accent-mint" type="button" data-accent-choice="mint" aria-label="Mint accent" aria-pressed="false"></button>
                 <button class="accent-choice accent-coral" type="button" data-accent-choice="coral" aria-label="Coral accent" aria-pressed="false"></button>
@@ -64,12 +65,11 @@
             <legend>Show on new tabs</legend>
             <label class="visibility-option"><span>Greeting</span><input type="checkbox" data-visibility="greeting" checked></label>
             <label class="visibility-option"><span>Clock</span><input type="checkbox" data-visibility="clock" checked></label>
-            <label class="visibility-option"><span>Weather</span><input type="checkbox" data-visibility="weather" checked></label>
+            <label class="visibility-option"><span>Weather widget</span><input type="checkbox" data-visibility="weather" checked></label>
         </fieldset>
     </aside>
 
     <div class="ntp-container">
-        <!-- Live Dynamic Time-of-Day Greeting -->
         <h1 id="greeting">Good afternoon</h1>
         <div id="clock">12:00 PM</div>
 
@@ -84,7 +84,13 @@
             <input type="text" id="search-input" placeholder="Choose an engine to search..." aria-label="Search or enter a web address" autofocus>
         </div>
 
-        <!-- Live Local Weather Widget Card -->
+        <section class="newtab-section" id="bookmarks-section" aria-labelledby="bookmarks-title">
+            <h2 id="bookmarks-title">Bookmarks</h2>
+            <div id="bookmark-grid" class="bookmark-grid"></div>
+            <p id="bookmarks-empty" class="bookmarks-empty" hidden>No bookmarks yet. Add some with the bookmark star.</p>
+        </section>
+
+        <!-- Weather widget -->
         <div class="weather-badge" id="weather-card">
             <span class="temp" id="weather-temp">--°C</span>
             <div class="weather-meta">

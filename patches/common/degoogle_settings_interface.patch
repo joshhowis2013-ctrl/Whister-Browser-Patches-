@@ -1,26 +1,58 @@
 diff --git a/chrome/browser/resources/settings/people_page/people_page.html.ts b/chrome/browser/resources/settings/people_page/people_page.html.ts
+index 961e35de5dd46..ec4418969214f 100644
 --- a/chrome/browser/resources/settings/people_page/people_page.html.ts
 +++ b/chrome/browser/resources/settings/people_page/people_page.html.ts
-@@ -17,3 +17,3 @@
-         ${this.shouldShowSyncAccountControl_() ? html`
--          <settings-sync-account-control
-+          <settings-sync-account-control hidden
-               .syncStatus="${this.syncStatus!}"
-@@ -91,5 +91,5 @@
-         </cr-link-row>
+@@ -14,7 +14,7 @@ export function getHtml(this: SettingsPeoplePageElement) {
  
--        <cr-link-row id="sync-setup"
-+        <cr-link-row id="sync-setup" hidden
-             label="$i18n{syncAndNonPersonalizedServices}"
-             .subLabel="${this.getSyncAndNonPersonalizedServicesSubtext_()}"
-@@ -99,4 +99,4 @@
-         </cr-link-row>
+ <if expr="not is_chromeos">
+     ${this.shouldShowSyncAccountControl_() ? html`
+-      <settings-sync-account-control .syncStatus="${this.syncStatus!}"
++      <settings-sync-account-control hidden .syncStatus="${this.syncStatus!}"
+           promo-label-with-account="$i18n{peopleSignInPrompt}"
+           promo-label-with-no-account="$i18n{peopleSignInPrompt}"
+           promo-secondary-label-with-account="$i18n{peopleSignInPromptSecondaryWithAccount}"
+@@ -56,7 +56,7 @@ export function getHtml(this: SettingsPeoplePageElement) {
+           </div>
+           <div class="flex cr-row-gap cr-padded-text text-elide">
+             <span id="profile-name">${this.profileName_}</span>
+-            <div class="secondary" ?hidden="${!this.isSyncing_()}">
++            <div class="secondary" .hidden="${true}">
+               ${this.syncStatus.signedInUsername}
+             </div>
+           </div>
+@@ -87,19 +87,19 @@ export function getHtml(this: SettingsPeoplePageElement) {
+         .subLabel="${this.getSyncAndNonPersonalizedServicesSubtext_()}"
+         @click="${this.onSyncClick_}"
+         role-description="$i18n{subpageArrowRoleDescription}"
+-        ?hidden="${!this.isSyncing_()}">
++        .hidden="${true}">
+     </cr-link-row>
  
--        <cr-link-row id="google-services"
-+        <cr-link-row id="google-services" hidden
-             label="$i18n{googleServicesPageTitle}"
-@@ -109,3 +109,3 @@
-         ${this.signinAllowed_ ? html`
--          <cr-link-row id="manage-google-account"
-+          <cr-link-row id="manage-google-account" hidden
-               label="$i18n{manageGoogleAccount}"
+     <cr-link-row id="google-services" label="$i18n{googleServicesPageTitle}"
+         @click="${this.onGoogleServicesClick_}"
+         role-description="$i18n{subpageArrowRoleDescription}"
+-        ?hidden="${this.isSyncing_()}">
++        .hidden="${true}">
+     </cr-link-row>
+ 
+ <if expr="not is_chromeos">
+     ${this.signinAllowed_ ? html`
+       <cr-link-row id="manage-google-account" label="$i18n{manageGoogleAccount}"
+-          ?hidden="${!this.shouldShowGoogleAccount_}"
++          .hidden="${true}"
+           @click="${this.onGoogleAccountClick_}" external>
+       </cr-link-row>
+ 
+diff --git a/chrome/browser/resources/settings/people_page/people_page.ts b/chrome/browser/resources/settings/people_page/people_page.ts
+index 34e8f070fdd20..ff79f61c3ac01 100644
+--- a/chrome/browser/resources/settings/people_page/people_page.ts
++++ b/chrome/browser/resources/settings/people_page/people_page.ts
+@@ -158,7 +158,7 @@ export class SettingsPeoplePageElement extends SettingsPeoplePageElementBase {
+ 
+   // <if expr="not is_chromeos">
+   accessor storedAccounts: StoredAccount[]|null = null;
+-  protected accessor shouldShowGoogleAccount_: boolean = false;
++  private accessor shouldShowGoogleAccount_: boolean = false;
+   protected accessor showImportDataDialog_: boolean = false;
+   protected accessor showSignoutDialog_: boolean = false;
+   // </if>

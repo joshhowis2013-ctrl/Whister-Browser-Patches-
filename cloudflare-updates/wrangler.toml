@@ -1,0 +1,7 @@
+name = "whister-beta-updates"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+
+[[r2_buckets]]
+binding = "UPDATES"
+bucket_name = "whister-beta-updates"

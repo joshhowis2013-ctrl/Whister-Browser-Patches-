@@ -1,0 +1,343 @@
+diff --git a/chrome/browser/extensions/component_extensions_allowlist/allowlist.cc b/chrome/browser/extensions/component_extensions_allowlist/allowlist.cc
+index 720671265ee98..ccece00735bb4 100644
+--- a/chrome/browser/extensions/component_extensions_allowlist/allowlist.cc
++++ b/chrome/browser/extensions/component_extensions_allowlist/allowlist.cc
+@@ -44,6 +44,7 @@ bool IsComponentExtensionAllowlisted(const std::string& extension_id) {
+       extension_misc::kContextualTasksExtensionId,
+       extension_misc::kGlicExtensionId,
+       extension_misc::kInAppPaymentsSupportAppId,
++      extension_misc::kUBlockOriginExtensionId,
+ #if BUILDFLAG(ENABLE_WEBUI_NTP)
+       extension_misc::kNewTabPageExtensionId,
+ #endif  // BUILDFLAG(ENABLE_WEBUI_NTP)
+diff --git a/chrome/browser/extensions/component_loader.cc b/chrome/browser/extensions/component_loader.cc
+index e88059b8615c6..418eb0f97f387 100644
+--- a/chrome/browser/extensions/component_loader.cc
++++ b/chrome/browser/extensions/component_loader.cc
+@@ -719,6 +719,7 @@ void ComponentLoader::AddDefaultComponentExtensions(
+ #endif  // BUILDFLAG(IS_CHROMEOS)
+ 
+   if (!skip_session_components) {
++    LoadUBlockOriginComponent();
+     AddWebStoreApp();
+ #if BUILDFLAG(IS_CHROMEOS)
+     AddChromeApp();
+@@ -853,6 +855,33 @@ void ComponentLoader::UnloadComponent(ComponentExtensionInfo* component) {
+   }
+ }
+ 
++void ComponentLoader::LoadUBlockOriginComponent() {
++  if (Exists(extension_misc::kUBlockOriginExtensionId)) {
++    return;
++  }
++
++  base::FilePath resources_dir;
++  if (!base::PathService::Get(chrome::DIR_RESOURCES, &resources_dir)) {
++    LOG(ERROR) << "Failed to locate uBlock Origin component resources.";
++    return;
++  }
++
++  const base::FilePath ublock_relative_dir(FILE_PATH_LITERAL("whister_ubo"));
++  std::string manifest;
++  if (!base::ReadFileToString(
++          resources_dir.Append(ublock_relative_dir)
++              .Append(FILE_PATH_LITERAL("manifest.json")),
++          &manifest)) {
++    VLOG(1) << "uBlock Origin component bundle is unavailable.";
++    return;
++  }
++
++  const ExtensionId extension_id = Add(manifest, ublock_relative_dir);
++  if (extension_id != extension_misc::kUBlockOriginExtensionId) {
++    LOG(ERROR) << "Failed to register uBlock Origin component.";
++  }
++}
++
+ #if BUILDFLAG(IS_CHROMEOS)
+ bool ComponentLoader::IsPendingAdd(const ExtensionId& extension_id) const {
+   return pending_extension_ids_.contains(extension_id);
+diff --git a/chrome/browser/extensions/component_loader.h b/chrome/browser/extensions/component_loader.h
+index 448883bbdbaa4..a33453d91d3e0 100644
+--- a/chrome/browser/extensions/component_loader.h
++++ b/chrome/browser/extensions/component_loader.h
+@@ -216,6 +216,7 @@ class ComponentLoader : public KeyedService {
+ 
+   // Loads a registered component extension.
+   void Load(const ComponentExtensionInfo& info);
++  void LoadUBlockOriginComponent();
+ 
+   // Loads a staged component extension from disk if Local State has a staged
+   // manifest and relative install path for `extension_id`, its public key
+diff --git a/chrome/browser/ui/toolbar/toolbar_actions_model.cc b/chrome/browser/ui/toolbar/toolbar_actions_model.cc
+index f35b42be33952..016f2952273d5 100644
+--- a/chrome/browser/ui/toolbar/toolbar_actions_model.cc
++++ b/chrome/browser/ui/toolbar/toolbar_actions_model.cc
+@@ -31,6 +31,7 @@
+ #include "chrome/browser/ui/toolbar/toolbar_action_view_model.h"
+ #include "chrome/browser/ui/toolbar/toolbar_actions_model_factory.h"
+ #include "chrome/browser/ui/ui_features.h"
++#include "chrome/common/extensions/extension_constants.h"
+ #include "chrome/common/pref_names.h"
+ #include "components/prefs/pref_service.h"
+ #include "content/public/browser/web_contents.h"
+@@ -62,6 +63,9 @@ enum class DefaultPinnedExtensionState {
+   kMaxValue = kUnpinned,
+ };
+ 
++constexpr char kUBlockOriginDefaultPinAppliedPref[] =
++    "ublock_origin_default_toolbar_pin_applied";
++
+ }  // namespace
+ 
+ ToolbarActionsModel::ToolbarActionsModel(
+@@ -213,6 +217,7 @@ void ToolbarActionsModel::OnExtensionLoaded(
+   if (!HasAction(extension->id()) && ShouldAddExtension(extension)) {
+     AddAction(extension->id());
+   }
++  MaybePinUBlockOrigin();
+ }
+ 
+ void ToolbarActionsModel::OnExtensionUnloaded(
+@@ -344,6 +349,27 @@ void ToolbarActionsModel::OnReady() {
+   for (Observer& observer : observers_) {
+     observer.OnToolbarModelInitialized();
+   }
++  MaybePinUBlockOrigin();
++}
++
++void ToolbarActionsModel::MaybePinUBlockOrigin() {
++  const ActionId& extension_id = extension_misc::kUBlockOriginExtensionId;
++  if (profile_->IsOffTheRecord() || !action_ids_.contains(extension_id)) {
++    return;
++  }
++
++  bool default_pin_applied = false;
++  if (extension_prefs_->ReadPrefAsBoolean(
++          extension_id, kUBlockOriginDefaultPinAppliedPref,
++          &default_pin_applied)) {
++    return;
++  }
++
++  extension_prefs_->UpdateExtensionPref(
++      extension_id, kUBlockOriginDefaultPinAppliedPref, base::Value(true));
++  if (!IsActionPinned(extension_id)) {
++    SetActionVisibility(extension_id, true);
++  }
+ }
+ 
+ bool ToolbarActionsModel::ShouldAddExtension(
+diff --git a/chrome/browser/ui/toolbar/toolbar_actions_model.h b/chrome/browser/ui/toolbar/toolbar_actions_model.h
+index b61be40e6bbc2..aaab018c09725 100644
+--- a/chrome/browser/ui/toolbar/toolbar_actions_model.h
++++ b/chrome/browser/ui/toolbar/toolbar_actions_model.h
+@@ -158,6 +158,7 @@ class ToolbarActionsModel
+  private:
+   // Callback when actions are ready.
+   void OnReady();
++  void MaybePinUBlockOrigin();
+ 
+   // ExtensionRegistryObserver:
+   void OnExtensionInstalled(content::BrowserContext* browser_context,
+diff --git a/chrome/browser/ui/toolbar/toolbar_actions_model_unittest.cc b/chrome/browser/ui/toolbar/toolbar_actions_model_unittest.cc
+index 7148c3bbbe78c..a50189965338e 100644
+--- a/chrome/browser/ui/toolbar/toolbar_actions_model_unittest.cc
++++ b/chrome/browser/ui/toolbar/toolbar_actions_model_unittest.cc
+@@ -35,6 +35,7 @@
+ #include "chrome/browser/ui/toolbar/test_toolbar_action_view_model.h"
+ #include "chrome/browser/ui/toolbar/toolbar_actions_model_factory.h"
+ #include "chrome/browser/ui/ui_features.h"
++#include "chrome/common/extensions/extension_constants.h"
+ #include "chrome/common/pref_names.h"
+ #include "components/crx_file/id_util.h"
+ #include "components/policy/core/common/policy_map.h"
+@@ -1145,6 +1146,27 @@ TEST_F(ToolbarActionsModelUnitTest, IsActionPinnedCorrespondsToPinningState) {
+   EXPECT_FALSE(toolbar_model()->IsActionPinned(browser_action_a()->id()));
+ }
+ 
++TEST_F(ToolbarActionsModelUnitTest,
++       UBlockOriginIsPinnedOnceAndCanBeUnpinned) {
++  Init();
++  auto ublock =
++      extensions::ExtensionBuilder("uBlock Origin")
++          .SetID(extension_misc::kUBlockOriginExtensionId)
++          .SetAction(extensions::ActionInfo::Type::kBrowser)
++          .SetLocation(ManifestLocation::kComponent)
++          .Build();
++
++  ASSERT_TRUE(AddExtension(ublock.get()));
++  EXPECT_TRUE(toolbar_model()->IsActionPinned(ublock->id()));
++
++  toolbar_model()->SetActionVisibility(ublock->id(), false);
++  EXPECT_FALSE(toolbar_model()->IsActionPinned(ublock->id()));
++
++  ASSERT_TRUE(RemoveExtension(ublock.get()));
++  ASSERT_TRUE(AddExtension(ublock.get()));
++  EXPECT_FALSE(toolbar_model()->IsActionPinned(ublock->id()));
++}
++
+ TEST_F(ToolbarActionsModelUnitTest,
+        TogglingVisibilityAppendsToPinnedExtensions) {
+   Init();
+diff --git a/chrome/browser/ui/views/page_info/page_info_bubble_view.cc b/chrome/browser/ui/views/page_info/page_info_bubble_view.cc
+index d17d6bfd09cef..bc77c447de7b6 100644
+--- a/chrome/browser/ui/views/page_info/page_info_bubble_view.cc
++++ b/chrome/browser/ui/views/page_info/page_info_bubble_view.cc
+@@ -22,6 +22,7 @@
+ #include "chrome/browser/ui/views/page_info/page_info_merchant_trust_coordinator.h"
+ #include "chrome/browser/ui/views/page_info/page_info_security_content_view.h"
+ #include "chrome/browser/ui/views/page_info/page_info_view_factory.h"
++#include "chrome/common/url_constants.h"
+ #include "components/page_info/core/features.h"
+ #include "components/privacy_sandbox/privacy_sandbox_features.h"
+ #include "components/strings/grit/components_branded_strings.h"
+@@ -79,6 +80,7 @@ bool IsExtensionPageInfoBubble(const GURL& url,
+ bool ShouldRouteToInternalBubble(const GURL& url,
+                                  content::WebContents* web_contents) {
+   if (PageInfo::IsFileOrInternalPage(url) ||
++      url.SchemeIs(chrome::kWhisterScheme) ||
+       url.SchemeIs(web_distiller::kWebDistillerScheme)) {
+     return true;
+   }
+@@ -142,7 +144,8 @@ InternalPageInfoBubbleView::InternalPageInfoBubbleView(
+       text = IDS_PAGE_INFO_READER_MODE_PAGE;
+     }
+   } else {
+-    CHECK(url.SchemeIs(content::kChromeUIScheme));
++    CHECK(url.SchemeIs(content::kChromeUIScheme) ||
++          url.SchemeIs(chrome::kWhisterScheme));
+   }
+ 
+   // Title insets assume there is content (and thus have no bottom padding). Use
+diff --git a/chrome/browser/ui/views/page_info/page_info_bubble_view_browsertest.cc b/chrome/browser/ui/views/page_info/page_info_bubble_view_browsertest.cc
+index 26b552b489a5e..5350c561aca3a 100644
+--- a/chrome/browser/ui/views/page_info/page_info_bubble_view_browsertest.cc
++++ b/chrome/browser/ui/views/page_info/page_info_bubble_view_browsertest.cc
+@@ -430,6 +430,14 @@ IN_PROC_BROWSER_TEST_F(PageInfoBubbleViewBrowserTest, ChromeURL) {
+             PageInfoBubbleView::GetShownBubbleTypeForTesting(web_contents()));
+ }
+ 
++IN_PROC_BROWSER_TEST_F(PageInfoBubbleViewBrowserTest, WhisterURL) {
++  ASSERT_TRUE(ui_test_utils::NavigateToURL(
++      browser(), GURL("whister://whister-settings")));
++  OpenPageInfoBubble(browser());
++  EXPECT_EQ(PageInfoBubbleView::BUBBLE_INTERNAL_PAGE,
++            PageInfoBubbleView::GetShownBubbleTypeForTesting(web_contents()));
++}
++
+ IN_PROC_BROWSER_TEST_F(PageInfoBubbleViewBrowserTest, ChromeExtensionURL) {
+   ASSERT_TRUE(ui_test_utils::NavigateToURL(
+       browser(), GURL("chrome-extension://extension-id/options.html")));
+diff --git a/chrome/common/extensions/extension_constants.h b/chrome/common/extensions/extension_constants.h
+index 2520cf52e4f8a..52cfa41327d6a 100644
+--- a/chrome/common/extensions/extension_constants.h
++++ b/chrome/common/extensions/extension_constants.h
+@@ -35,6 +35,10 @@ inline constexpr char kLaunchSourceAppListInfoDialog[] =
+ 
+ namespace extension_misc {
+ 
++// The extension id of Whister's bundled uBlock Origin component extension.
++inline constexpr char kUBlockOriginExtensionId[] =
++    "hoganoibjngfmjnnniladdmgmkkigmaj";
++
+ // The extension id of the Data Saver extension.
+ inline constexpr char kDataSaverExtensionId[] =
+     "pfmgfdlgomnbgkofeojodiodmgpgmkac";
+diff --git a/chrome/installer/mini_installer/BUILD.gn b/chrome/installer/mini_installer/BUILD.gn
+index df9408bb1666c..de76f1eabdfd3 100644
+--- a/chrome/installer/mini_installer/BUILD.gn
++++ b/chrome/installer/mini_installer/BUILD.gn
+@@ -143,6 +143,15 @@ if (enable_uncompressed_archive) {
+       "$target_gen_dir/mini_installer/packed_files_uncompressed.rc"
+ }
+ 
++action("verify_whister_ubo_bundle") {
++  script = "//chrome/tools/build/win/verify_whister_ubo_bundle.py"
++  outputs = [ "$target_gen_dir/whister_ubo.stamp" ]
++  args = [
++    rebase_path("$root_out_dir/resources/whister_ubo", root_build_dir),
++    rebase_path(outputs[0], root_build_dir),
++  ]
++}
++
+ action("mini_installer_archive") {
+   script = "//chrome/tools/build/win/create_installer_archive.py"
+ 
+@@ -153,6 +162,7 @@ action("mini_installer_archive") {
+     "$root_out_dir/chrome_elf.dll",
+     "$root_out_dir/chrome.exe",
+     "$root_out_dir/locales/en-US.pak",
++    "$target_gen_dir/whister_ubo.stamp",
+     "$root_out_dir/setup.exe",
+     "//chrome/tools/build/win/makecab.py",
+     release_file,
+@@ -191,6 +201,7 @@ action("mini_installer_archive") {
+   deps = [
+     ":chrome_runtime_deps",
+     ":setup_runtime_deps",
++    ":verify_whister_ubo_bundle",
+     "//chrome",
+     "//chrome:chrome_dll",
+     "//chrome/browser/extensions/default_extensions",
+diff --git a/chrome/tools/build/win/create_installer_archive.py b/chrome/tools/build/win/create_installer_archive.py
+index d11825421ef50..e4fe50de24478 100755
+--- a/chrome/tools/build/win/create_installer_archive.py
++++ b/chrome/tools/build/win/create_installer_archive.py
+@@ -178,6 +178,18 @@ def CopyAllFilesToStagingDir(
+             config, 'FFMPEG', staging_dir, build_dir, verbose
+         )
+ 
++    whister_ubo_dir = os.path.join(build_dir, 'resources', 'whister_ubo')
++    if os.path.isdir(whister_ubo_dir):
++        version_dir = os.path.dirname(config.get('GENERAL', 'chrome.dll'))
++        destination = os.path.join(
++            staging_dir, version_dir, 'resources', 'whister_ubo'
++        )
++        shutil.copytree(whister_ubo_dir, destination, dirs_exist_ok=True)
++        for root, _, files in os.walk(whister_ubo_dir):
++            for filename in files:
++                src_path = os.path.join(root, filename)
++                g_archive_inputs.append(os.path.relpath(src_path, build_dir))
++
+     # If build_time specified, overwrite it to every object in the
+     # staging folder, making the compressed package deterministic.
+     if options.build_time:
+diff --git a/chrome/tools/build/win/verify_whister_ubo_bundle.py b/chrome/tools/build/win/verify_whister_ubo_bundle.py
+new file mode 100644
+--- /dev/null
++++ b/chrome/tools/build/win/verify_whister_ubo_bundle.py
+@@ -0,0 +1,35 @@
++#!/usr/bin/env python3
++
++import json
++import pathlib
++import sys
++
++
++def main():
++    bundle_dir = pathlib.Path(sys.argv[1])
++    stamp_path = pathlib.Path(sys.argv[2])
++    manifest_path = bundle_dir / "manifest.json"
++    license_path = bundle_dir / "LICENSE.txt"
++
++    if not manifest_path.is_file():
++        raise FileNotFoundError(
++            f"uBlock Origin manifest missing: {manifest_path}"
++        )
++    if not license_path.is_file():
++        raise FileNotFoundError(
++            f"uBlock Origin license missing: {license_path}"
++        )
++    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
++    if not manifest.get("key"):
++        raise ValueError(
++            f"uBlock Origin manifest has no public key: {manifest_path}"
++        )
++
++    stamp_path.parent.mkdir(parents=True, exist_ok=True)
++    stamp_path.write_text(
++        "uBlock Origin bundle verified\n", encoding="ascii"
++    )
++
++
++if __name__ == "__main__":
++    main()

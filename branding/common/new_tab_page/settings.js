@@ -7,7 +7,6 @@ const empty = document.getElementById('empty');
 const items = Array.from(document.querySelectorAll('.card, .row'));
 const sections = Array.from(document.querySelectorAll('section'));
 const controls = Array.from(document.querySelectorAll('[data-key]'));
-
 function applyTheme(value) {
   const theme = Number(value);
   const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
@@ -23,16 +22,6 @@ function sendMessage(name, args) {
 }
 
 window.whisterSettings = {
-  onUblockInstallRequested(requestStarted) {
-    if (requestStarted) {
-      window.location.href = 'chrome://newtab';
-      return;
-    }
-    sendMessage('navigateToUrl', [
-      'https://chromewebstore.google.com/detail/ublock-origin-lite/ddkjiahejlhfcafbddmgiahcphecmpfh',
-    ]);
-  },
-
   onAbout(info) {
     for (const el of document.querySelectorAll('[data-about]')) {
       el.textContent = info[el.dataset.about] ?? '';
@@ -66,82 +55,81 @@ window.whisterSettings = {
     }
     applyTheme(values['browser.theme.color_scheme2']);
   },
-  onPatchCheckComplete(status, patchFileName) {
+  onUpdateCheckResult(status, version, installerUrl, sha256, size) {
     const button = document.getElementById('check-updates-btn');
     const statusText = document.getElementById('update-status-text');
-    if (!button || !statusText) return;
+    const downloadRow = document.getElementById('update-download-row');
+    const downloadButton = document.getElementById('download-verify-btn');
+    const installRow = document.getElementById('update-install-row');
+    const latestLink = document.getElementById('latest-build-link');
+    if (!button || !statusText || !downloadRow || !downloadButton ||
+        !installRow || !latestLink) return;
 
-    // Remove the loading animation loop
     button.classList.remove('loading');
-
-    if (status === 'patch_found') {
-      button.innerText = "Apply Patch";
-      statusText.innerHTML = `New workspace update found: <code>${patchFileName}</code>`;
-      
-      // Override the button click to handle applying the local text diff patch
-      button.onclick = () => {
-        button.classList.add('loading');
-        statusText.innerText = "Applying unified source code transformations...";
-        sendMessage('applyLocalPatch', [patchFileName]);
-      };
-    } else if (status === 'no_patches') {
-      button.innerText = "Check version";
-      statusText.innerText = "Whister is completely up to date.";
-    } else if (status === 'success') {
-      button.innerText = "Rebuild Ready";
-      button.disabled = true;
-      statusText.innerText = "Patch successfully applied! Run siso/autoninja to compile your build.";
-    } else if (status === 'error') {
-      button.innerText = "Retry Check";
-      statusText.innerText = "Failed to access local patch target files.";
+    button.disabled = false;
+    switch (status) {
+      case 'up_to_date':
+        statusText.textContent = `Whister is up to date (version ${version}).`;
+        latestLink.href = 'https://beta-updates.whisterbrowser.com/';
+        latestLink.textContent = 'Get latest build';
+        downloadRow.hidden = true;
+        installRow.hidden = true;
+        break;
+      case 'update_available':
+        statusText.textContent = `Whister ${version} is available. Download and verify it before installing.`;
+        latestLink.href = installerUrl;
+        latestLink.textContent = `Download ${version}`;
+        downloadRow.hidden = false;
+        installRow.hidden = true;
+        downloadButton.disabled = false;
+        downloadButton.dataset.expectedHash = sha256;
+        downloadButton.dataset.expectedSize = String(size);
+        break;
+      case 'error':
+      default:
+        statusText.textContent = 'Could not validate the beta update manifest. Try again later.';
+        latestLink.href = 'https://beta-updates.whisterbrowser.com/';
+        latestLink.textContent = 'Get latest build';
+        downloadRow.hidden = true;
+        installRow.hidden = true;
+        break;
     }
   },
 
-  onWhisterUpdateResult(status, details) {
-    const button = document.getElementById('check-updates-btn');
+  onUpdateDownloadResult(status, version, hash) {
     const statusText = document.getElementById('update-status-text');
-    if (!button || !statusText) return;
+    const downloadButton = document.getElementById('download-verify-btn');
+    const checkButton = document.getElementById('check-updates-btn');
+    const downloadRow = document.getElementById('update-download-row');
+    const installRow = document.getElementById('update-install-row');
+    const hashText = document.getElementById('update-sha256');
+    if (!statusText || !downloadButton || !checkButton || !downloadRow || !installRow ||
+        !hashText) return;
 
-    // Turn off the spinning loader ring animation instantly
-    button.classList.remove('loading');
-
+    downloadButton.disabled = status === 'downloading';
+    checkButton.disabled = status === 'downloading';
     switch (status) {
-      case 'noupdate':
-        button.innerText = "Check version";
-        statusText.innerText = "Whister is completely up to date.";
+      case 'downloading':
+        statusText.textContent = 'Downloading the installer for SHA-256 verification…';
         break;
-
-      case 'patch_available':
-        button.innerText = "Apply Patch";
-        statusText.innerHTML = `Smart Update Ready: Source patch <code>${details}</code> discovered.`;
-        
-        // Arm the button to trigger the smart download phase on next click
-        button.onclick = () => {
-          button.classList.add('loading');
-          statusText.innerText = "Downloading unified source diff files...";
-          sendMessage('executeSmartWhisterDownload', [details]);
-        };
+      case 'verified':
+        statusText.textContent = `Whister ${version} downloaded and SHA-256 verified.`;
+        hashText.textContent = hash;
+        downloadRow.hidden = true;
+        installRow.hidden = false;
         break;
-
-      case 'download_failed':
-        button.innerText = "Retry Check";
-        statusText.innerText = "Error: File download interrupted or stream corrupted.";
+      case 'checksum_mismatch':
+        statusText.textContent = `SHA-256 verification failed. The downloaded file was deleted. Expected: ${hash}`;
+        installRow.hidden = true;
         break;
-
-      case 'network_error':
-        button.innerText = "Retry Check";
-        statusText.innerText = "Error: Could not establish a connection to ://whisterbrowser.com.";
+      case 'installer_started':
+        statusText.textContent = `The verified ${version} installer was opened. Follow its prompts to update.`;
+        installRow.hidden = true;
         break;
-
-      case 'success':
-        button.innerText = "Almost Done";
-        button.disabled = true;
-        statusText.innerText = "Restart whister to complete the update.";
-        break;
-
+      case 'error':
       default:
-        button.innerText = "Check version";
-        statusText.innerText = "System error encountered during update validation pass.";
+        statusText.textContent = 'The installer could not be downloaded or verified. No update was installed.';
+        downloadButton.disabled = false;
         break;
     }
   }
@@ -178,6 +166,33 @@ for (const link of document.querySelectorAll('a[data-webui-navigate]')) {
   });
 }
 
+const updateButton = document.getElementById('check-updates-btn');
+if (updateButton) {
+  updateButton.addEventListener('click', () => {
+    updateButton.classList.add('loading');
+    updateButton.disabled = true;
+    document.getElementById('update-download-row').hidden = true;
+    document.getElementById('update-install-row').hidden = true;
+    sendMessage('checkWhisterUpdates');
+  });
+}
+
+const verifyUpdateButton = document.getElementById('download-verify-btn');
+if (verifyUpdateButton) {
+  verifyUpdateButton.addEventListener('click', () => {
+    verifyUpdateButton.disabled = true;
+    document.getElementById('check-updates-btn').disabled = true;
+    sendMessage('downloadAndVerifyWhisterUpdate');
+  });
+}
+
+const installUpdateButton = document.getElementById('install-verified-btn');
+if (installUpdateButton) {
+  installUpdateButton.addEventListener('click', () => {
+    sendMessage('installVerifiedWhisterUpdate');
+  });
+}
+
 const steps = Array.from(document.querySelectorAll('.step'));
 let currentStep = 0;
 
@@ -192,9 +207,20 @@ function showStep(index) {
   });
   const heading = steps[currentStep].querySelector('h1');
   if (heading) heading.focus({ preventScroll: true });
+  const progress = document.querySelector('.dots');
+  if (progress) {
+    progress.setAttribute('aria-valuenow', String(currentStep + 1));
+    progress.setAttribute('aria-valuetext', `Step ${currentStep + 1} of ${steps.length}`);
+  }
 }
 
 if (steps.length) {
+  const progress = document.querySelector('.dots');
+  if (progress) {
+    progress.setAttribute('role', 'progressbar');
+    progress.setAttribute('aria-valuemin', '1');
+    progress.setAttribute('aria-valuemax', String(steps.length));
+  }
   for (const button of document.querySelectorAll('[data-next]')) {
     button.addEventListener('click', () => showStep(currentStep + 1));
   }
@@ -207,15 +233,7 @@ if (steps.length) {
 const finishButton = document.getElementById('finish');
 if (finishButton) {
   finishButton.addEventListener('click', () => {
-    const consent = document.getElementById('install-ublock-lite');
-    if (consent && consent.checked) {
-      const sent = sendMessage('installUblockLite', [true]);
-      if (!sent) {
-        window.location.href = 'https://chromewebstore.google.com/detail/ublock-origin-lite/ddkjiahejlhfcafbddmgiahcphecmpfh';
-      }
-    } else {
-      window.location.href = 'chrome://newtab';
-    }
+    window.location.href = 'whister://newtab';
   });
 }
 

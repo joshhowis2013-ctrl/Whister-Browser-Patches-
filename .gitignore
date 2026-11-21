@@ -1,1 +1,4 @@
 dist/
+updater/**/bin/
+updater/**/obj/
+*.pem

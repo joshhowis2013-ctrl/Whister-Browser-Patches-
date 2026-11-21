@@ -61,10 +61,28 @@ jobs:
         shell: pwsh
         run: .\update_and_build.ps1 -Channel "${{ inputs.channel }}"
 
+      - name: Install release packaging dependencies
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Package Whister installer
+        shell: pwsh
+        run: |
+          choco install nsis --no-progress --yes
+          $buildDirectory = if ("${{ inputs.channel }}" -eq "stable") {
+            "C:\chromium\src\out\StableRelease"
+          } else {
+            "C:\chromium\src\out\BetaRelease"
+          }
+          .\package_installer.ps1 -BuildDir $buildDirectory
+
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
           name: whister-${{ inputs.channel }}-installer
-          path: C:\chromium\src\out\**\mini_installer.exe
+          path: |
+            dist\WhisterSetup-*.exe
+            dist\WhisterSetup-*.exe.sha256
           if-no-files-found: error
           retention-days: 14

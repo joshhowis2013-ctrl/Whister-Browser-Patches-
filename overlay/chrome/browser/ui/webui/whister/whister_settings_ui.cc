@@ -27,6 +27,7 @@ void AddNewTabSource(content::WebUI* web_ui) {
   source->SetDefaultResource(IDR_WHISTER_NEW_TAB_HTML);
   source->AddResourcePath("style.css", IDR_WHISTER_NEW_TAB_CSS);
   source->AddResourcePath("app.js", IDR_WHISTER_NEW_TAB_JS);
+  source->AddResourcePath("whister-logo.png", IDR_WHISTER_NEW_TAB_LOGO);
   web_ui->AddMessageHandler(std::make_unique<WhisterSettingsHandler>());
 }
 

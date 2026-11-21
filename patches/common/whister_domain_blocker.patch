@@ -1,0 +1,449 @@
+diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
+index e89a8c391bd12..8901d92f4ebff 100644
+--- a/chrome/browser/BUILD.gn
++++ b/chrome/browser/BUILD.gn
+@@ -1010,6 +1010,8 @@ source_set("core") {
+     "chrome_browser_interface_binders_webui_parts_features.cc",
+     "chrome_browser_main.cc",
+     "chrome_content_browser_client.cc",
++    "whister_blocker/whister_domain_blocker_url_loader_throttle.cc",
++    "whister_blocker/whister_domain_blocker_url_loader_throttle.h",
+     "chrome_content_browser_client_binder_policies.cc",
+     "chrome_content_browser_client_binder_policies.h",
+     "chrome_content_browser_client_navigation_throttles.cc",
+diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
+index 1cf918d71241f..3a152d89b7fca 100644
+--- a/chrome/browser/chrome_content_browser_client.cc
++++ b/chrome/browser/chrome_content_browser_client.cc
+@@ -80,6 +80,7 @@
+ #include "chrome/browser/contextual_tasks/contextual_tasks_url_loader_factory_interceptor.h"
+ #include "chrome/browser/contextual_tasks/contextual_tasks_url_loader_throttle.h"
+ #include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
++#include "chrome/browser/whister_blocker/whister_domain_blocker_url_loader_throttle.h"
+ #include "chrome/browser/contextual_tasks/guest_opener_user_data.h"
+ #include "chrome/browser/custom_handlers/protocol_handler_registry_factory.h"
+ #include "chrome/browser/data_saver/data_saver.h"
+@@ -789,6 +790,10 @@ void ChromeContentBrowserClient::RegisterLocalStatePrefs(
+ // static
+ void ChromeContentBrowserClient::RegisterProfilePrefs(
+     user_prefs::PrefRegistrySyncable* registry) {
++  registry->RegisterBooleanPref("whister.blocker.enabled", false);
++  registry->RegisterIntegerPref("whister.blocker.blocked_count", 0);
++  registry->RegisterStringPref("whister.blocker.ui", "ublock");
++
+   registry->RegisterBooleanPref(prefs::kDisable3DAPIs, false);
+   registry->RegisterBooleanPref(prefs::kEnableHyperlinkAuditing, true);
+   // Register user prefs for mapping SitePerProcess and IsolateOrigins in
+@@ -1527,6 +1531,10 @@ void AppendExtraCommandLineSwitchesFromPrefs(base::CommandLine* command_line,
+            .empty()) {
+     command_line->AppendSwitch(switches::kWebAuthRemoteDesktopSupport);
+   }
++
++  if (prefs->GetBoolean("whister.blocker.enabled")) {
++    command_line->AppendSwitch("whister-blocker-enabled");
++  }
+ }
+ 
+ }  // namespace
+@@ -2618,7 +2626,11 @@ ChromeContentBrowserClient::CreateURLLoaderThrottles(
+   if (profile->IsTopChromeWebUIProfile()) {
+     return result;
+   }
++
++  result.push_back(std::make_unique<
++                   whister_blocker::WhisterDomainBlockerURLLoaderThrottle>(
++      profile->GetPrefs()->GetBoolean("whister.blocker.enabled")));
+ 
+   ChromeNavigationUIData* chrome_navigation_ui_data =
+       static_cast<ChromeNavigationUIData*>(navigation_ui_data);
+ 
+diff --git a/chrome/renderer/chrome_content_renderer_client.cc b/chrome/renderer/chrome_content_renderer_client.cc
+index 6ab4a9d9b4622..5fc819b11c79a 100644
+--- a/chrome/renderer/chrome_content_renderer_client.cc
++++ b/chrome/renderer/chrome_content_renderer_client.cc
+@@ -182,6 +182,7 @@
+ #include "third_party/blink/public/web/web_plugin_container.h"
+ #include "third_party/blink/public/web/web_plugin_params.h"
+ #include "third_party/blink/public/web/web_security_policy.h"
++#include "third_party/blink/public/web/web_script_source.h"
+ #include "third_party/blink/public/web/web_view.h"
+ #include "ui/base/l10n/l10n_util.h"
+ #include "ui/base/page_transition_types.h"
+@@ -1488,6 +1489,195 @@ ChromeContentRendererClient::CreateSpeechRecognitionClient(
+ 
+ void ChromeContentRendererClient::RunScriptsAtDocumentStart(
+     content::RenderFrame* render_frame) {
++  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
++          "whister-blocker-enabled")) {
++    constexpr char kWhisterBlockerScript[] = R"JS(
++(() => {
++  'use strict';
++  if (location.protocol !== 'http:' && location.protocol !== 'https:') return;
++
++  const blockedDomains = [
++    'adnxs.com', 'ads.microsoft.com', 'ads.msn.com', 'adsrvr.org',
++    'amazon-adsystem.com', 'analytics.pinterest.com', 'analytics.tiktok.com',
++    'analytics.twitter.com', 'amplitude.com', 'api.amplitude.com',
++    'bat.bing.com', 'bluekai.com', 'casalemedia.com', 'clarity.ms',
++    'connect.facebook.net', 'criteo.com', 'criteo.net', 'ct.pinterest.com',
++    'demdex.net', 'doubleclick.net', 'events.reddit.com', 'everesttech.net',
++    'google-analytics.com', 'googleadservices.com', 'googlesyndication.com',
++    'googletagmanager.com', 'hotjar.com', 'krxd.net', 'matomo.cloud',
++    'mixpanel.com', 'mouseflow.com', 'omtrdc.net', 'openx.net', 'outbrain.com',
++    'pixel.facebook.com', 'pixel.reddit.com', 'pixel.wp.com', 'plausible.io',
++    'pubmatic.com', 'quantserve.com', 'rubiconproject.com',
++    'scorecardresearch.com', 'sc-static.net', 'segment.io', 'static.hotjar.com',
++    'stats.wp.com', 'taboola.com', 'tracking-protection.cdn.mozilla.net',
++    'tr.snapchat.com', 'yieldmo.com',
++  ];
++  const adMarker = /(^|[-_:\s])(ad|ads|adslot|adunit|adcontainer|advertisement|sponsored-ad)(?=$|[-_:\s])/i;
++  const isMsnPage = /(^|\.)msn\.com$/i.test(location.hostname);
++  const isBlockedUrl = value => {
++    try {
++      const host = new URL(value, location.href).hostname.toLowerCase();
++      return blockedDomains.some(domain => host === domain ||
++          host.endsWith(`.${domain}`));
++    } catch {
++      return false;
++    }
++  };
++  const hasAdMarker = element => {
++    if (element.matches('ins.adsbygoogle,[data-ad-client],[data-ad-slot]')) {
++      return true;
++    }
++    for (const attribute of element.attributes) {
++      if ((attribute.name.startsWith('data-') ||
++           attribute.name === 'id' || attribute.name === 'class') &&
++          adMarker.test(`${attribute.name} ${attribute.value}`)) {
++        return true;
++      }
++    }
++    return false;
++  };
++  const isMsnDisplayPlacement = element => {
++    if (!isMsnPage) return false;
++    if (element.matches(
++            'div.ad-container, div.ad-slot, div[data-ad-container], ' +
++            'div[data-ad-slot], div[id^="ad-container-"], ' +
++            'div[id^="ad-slot-"]')) {
++      return true;
++    }
++    if (element.tagName !== 'IFRAME') return false;
++    if (/^(google_ads_iframe|aswift)_/i.test(element.id) ||
++        /^(google_ads_iframe|aswift)_/i.test(element.name)) {
++      return true;
++    }
++    try {
++      const host = new URL(element.src, location.href).hostname.toLowerCase();
++      return host === 'ads.microsoft.com' ||
++          host.endsWith('.ads.microsoft.com') || host === 'ads.msn.com';
++    } catch {
++      return false;
++    }
++  };
++  const hide = element => {
++    if (element.hasAttribute('data-whister-blocked')) return;
++    element.style.setProperty('display', 'none', 'important');
++    element.setAttribute('data-whister-blocked', 'true');
++    const root = document.documentElement;
++    root.dataset.whisterBlockedCount =
++        String((Number(root.dataset.whisterBlockedCount) || 0) + 1);
++  };
++  const filterElement = element => {
++    if (!(element instanceof Element) ||
++        element.hasAttribute('data-whister-blocked')) {
++      return;
++    }
++    if (isMsnDisplayPlacement(element) || element.matches('ins.adsbygoogle') ||
++        (element.tagName === 'IFRAME' &&
++         (isBlockedUrl(element.src) || hasAdMarker(element)))) {
++      hide(element);
++      return;
++    }
++    if (hasAdMarker(element) &&
++        element.querySelector('iframe, ins.adsbygoogle, .adsbygoogle')) {
++      hide(element);
++    }
++  };
++  const filterSubtree = root => {
++    if (!(root instanceof Element)) return;
++    filterElement(root);
++    for (const element of root.querySelectorAll(
++             'iframe, ins.adsbygoogle, .adsbygoogle, [data-ad-client], ' +
++             '[data-ad-slot], [id], [class]')) {
++      filterElement(element);
++    }
++    for (let parent = root.parentElement, depth = 0;
++         parent && depth < 3; parent = parent.parentElement, ++depth) {
++      filterElement(parent);
++    }
++  };
++  const filterDuckDuckGoPromo = root => {
++    if (!/(^|\.)duckduckgo\.com$/i.test(location.hostname)) return;
++    const dialogs = root instanceof Element &&
++            root.matches('[role="dialog"], dialog') ? [root] :
++            root.querySelectorAll?.('[role="dialog"], dialog') || [];
++    for (const dialog of dialogs) {
++      const text = dialog.textContent || '';
++      if (text.includes('Upgrade to our browser') &&
++          text.includes('Get the free DuckDuckGo Browser to block ads on YouTube')) {
++        hide(dialog);
++      }
++    }
++  };
++  const filter = root => {
++    filterSubtree(root);
++    filterDuckDuckGoPromo(root);
++  };
++  let pickerCleanup = null;
++  document.addEventListener('whister-start-element-picker', () => {
++    if (pickerCleanup) return;
++    const overlay = document.createElement('div');
++    Object.assign(overlay.style, {
++      position: 'fixed', pointerEvents: 'none', zIndex: '2147483647',
++      border: '2px solid #4285f4', background: 'rgba(66, 133, 244, .12)',
++    });
++    document.documentElement.append(overlay);
++    let target = null;
++    const positionOverlay = element => {
++      const rect = element.getBoundingClientRect();
++      Object.assign(overlay.style, {
++        left: `${rect.left}px`, top: `${rect.top}px`,
++        width: `${rect.width}px`, height: `${rect.height}px`,
++      });
++    };
++    const onMove = event => {
++      target = event.target instanceof Element ? event.target : null;
++      if (target && target !== overlay) positionOverlay(target);
++    };
++    const cleanup = () => {
++      document.removeEventListener('mousemove', onMove, true);
++      document.removeEventListener('click', onClick, true);
++      document.removeEventListener('keydown', onKey, true);
++      overlay.remove();
++      pickerCleanup = null;
++    };
++    const onClick = event => {
++      if (!target || target === document.documentElement ||
++          target === document.body) return;
++      event.preventDefault();
++      event.stopImmediatePropagation();
++      hide(target);
++      cleanup();
++    };
++    const onKey = event => {
++      if (event.key === 'Escape') {
++        event.preventDefault();
++        cleanup();
++      }
++    };
++    pickerCleanup = cleanup;
++    document.addEventListener('mousemove', onMove, true);
++    document.addEventListener('click', onClick, true);
++    document.addEventListener('keydown', onKey, true);
++  });
++  filter(document.documentElement);
++  new MutationObserver(records => {
++    for (const record of records) {
++      if (record.type === 'attributes') {
++        filter(record.target);
++      }
++      for (const node of record.addedNodes) filter(node);
++    }
++  }).observe(document, {
++    subtree: true,
++    childList: true,
++    attributes: true,
++    attributeFilter: ['class', 'id', 'src', 'data-ad-client', 'data-ad-slot'],
++  });
++})();
++)JS";
++    render_frame->GetWebFrame()->ExecuteScript(
++        blink::WebScriptSource(blink::WebString::FromAscii(
++            kWhisterBlockerScript)));
++  }
+ #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+   extensions::ExtensionsRendererClient::Get()->RunScriptsAtDocumentStart(
+       render_frame);
+diff --git a/chrome/browser/whister_blocker/whister_domain_blocker_url_loader_throttle.h b/chrome/browser/whister_blocker/whister_domain_blocker_url_loader_throttle.h
+new file mode 100644
+index 0000000000000..0000000000000
+--- /dev/null
++++ b/chrome/browser/whister_blocker/whister_domain_blocker_url_loader_throttle.h
+@@ -0,0 +1,49 @@
++// Copyright 2026 Whister Browser Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_WHISTER_BLOCKER_WHISTER_DOMAIN_BLOCKER_URL_LOADER_THROTTLE_H_
++#define CHROME_BROWSER_WHISTER_BLOCKER_WHISTER_DOMAIN_BLOCKER_URL_LOADER_THROTTLE_H_
++
++#include "third_party/blink/public/common/loader/url_loader_throttle.h"
++
++class GURL;
++
++namespace net {
++struct RedirectInfo;
++}  // namespace net
++
++namespace network {
++struct HttpRequestHeadersUpdateParams;
++struct ResourceRequest;
++}  // namespace network
++
++namespace whister_blocker {
++
++class WhisterDomainBlockerURLLoaderThrottle : public blink::URLLoaderThrottle {
++ public:
++  explicit WhisterDomainBlockerURLLoaderThrottle(bool enabled);
++  ~WhisterDomainBlockerURLLoaderThrottle() override;
++
++  WhisterDomainBlockerURLLoaderThrottle(
++      const WhisterDomainBlockerURLLoaderThrottle&) = delete;
++  WhisterDomainBlockerURLLoaderThrottle& operator=(
++      const WhisterDomainBlockerURLLoaderThrottle&) = delete;
++
++  void WillStartRequest(network::ResourceRequest* request,
++                        bool* defer) override;
++  void WillRedirectRequest(
++      net::RedirectInfo* redirect_info,
++      const network::mojom::URLResponseHead& response_head,
++      bool* defer,
++      network::HttpRequestHeadersUpdateParams* headers_update_params) override;
++
++ private:
++  bool ShouldBlock(const GURL& url) const;
++
++  const bool enabled_;
++};
++
++}  // namespace whister_blocker
++
++#endif  // CHROME_BROWSER_WHISTER_BLOCKER_WHISTER_DOMAIN_BLOCKER_URL_LOADER_THROTTLE_H_
+diff --git a/chrome/browser/whister_blocker/whister_domain_blocker_url_loader_throttle.cc b/chrome/browser/whister_blocker/whister_domain_blocker_url_loader_throttle.cc
+new file mode 100644
+index 0000000000000..0000000000000
+--- /dev/null
++++ b/chrome/browser/whister_blocker/whister_domain_blocker_url_loader_throttle.cc
+@@ -0,0 +1,121 @@
++// Copyright 2026 Whister Browser Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/whister_blocker/whister_domain_blocker_url_loader_throttle.h"
++
++#include <array>
++#include <string_view>
++
++#include "base/strings/string_util.h"
++#include "net/base/net_errors.h"
++#include "net/url_request/redirect_info.h"
++#include "services/network/public/cpp/resource_request.h"
++#include "url/gurl.h"
++
++namespace whister_blocker {
++
++namespace {
++
++constexpr std::array<std::string_view, 50> kBlockedDomains = {
++    "adnxs.com",
++    "ads.microsoft.com",
++    "ads.msn.com",
++    "adsrvr.org",
++    "amazon-adsystem.com",
++    "analytics.pinterest.com",
++    "analytics.tiktok.com",
++    "analytics.twitter.com",
++    "amplitude.com",
++    "api.amplitude.com",
++    "bat.bing.com",
++    "bluekai.com",
++    "casalemedia.com",
++    "clarity.ms",
++    "connect.facebook.net",
++    "criteo.com",
++    "criteo.net",
++    "ct.pinterest.com",
++    "demdex.net",
++    "doubleclick.net",
++    "events.reddit.com",
++    "everesttech.net",
++    "google-analytics.com",
++    "googleadservices.com",
++    "googlesyndication.com",
++    "googletagmanager.com",
++    "hotjar.com",
++    "krxd.net",
++    "matomo.cloud",
++    "mixpanel.com",
++    "mouseflow.com",
++    "omtrdc.net",
++    "openx.net",
++    "outbrain.com",
++    "pixel.facebook.com",
++    "pixel.reddit.com",
++    "pixel.wp.com",
++    "plausible.io",
++    "pubmatic.com",
++    "quantserve.com",
++    "rubiconproject.com",
++    "scorecardresearch.com",
++    "sc-static.net",
++    "segment.io",
++    "static.hotjar.com",
++    "stats.wp.com",
++    "taboola.com",
++    "tracking-protection.cdn.mozilla.net",
++    "tr.snapchat.com",
++    "yieldmo.com",
++};
++
++bool HostMatchesDomain(std::string_view host, std::string_view domain) {
++  return base::EqualsCaseInsensitiveASCII(host, domain) ||
++         (host.size() > domain.size() &&
++          host[host.size() - domain.size() - 1] == '.' &&
++          base::EndsWith(host, domain,
++                         base::CompareCase::INSENSITIVE_ASCII));
++}
++
++}  // namespace
++
++WhisterDomainBlockerURLLoaderThrottle::WhisterDomainBlockerURLLoaderThrottle(
++    bool enabled)
++    : enabled_(enabled) {}
++
++WhisterDomainBlockerURLLoaderThrottle::~WhisterDomainBlockerURLLoaderThrottle() =
++    default;
++
++void WhisterDomainBlockerURLLoaderThrottle::WillStartRequest(
++    network::ResourceRequest* request,
++    bool* defer) {
++  if (ShouldBlock(request->url)) {
++    delegate_->CancelWithError(net::ERR_BLOCKED_BY_CLIENT, "Whister Blocker");
++  }
++}
++
++void WhisterDomainBlockerURLLoaderThrottle::WillRedirectRequest(
++    net::RedirectInfo* redirect_info,
++    const network::mojom::URLResponseHead& response_head,
++    bool* defer,
++    network::HttpRequestHeadersUpdateParams* headers_update_params) {
++  if (ShouldBlock(redirect_info->new_url)) {
++    delegate_->CancelWithError(net::ERR_BLOCKED_BY_CLIENT, "Whister Blocker");
++  }
++}
++
++bool WhisterDomainBlockerURLLoaderThrottle::ShouldBlock(const GURL& url) const {
++  if (!enabled_ || !url.SchemeIsHTTPOrHTTPS()) {
++    return false;
++  }
++
++  for (std::string_view domain : kBlockedDomains) {
++    if (HostMatchesDomain(url.host(), domain)) {
++      return true;
++    }
++  }
++  return false;
++}
++
++}  // namespace whister_blocker
