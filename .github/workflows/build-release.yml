@@ -1,0 +1,66 @@
+name: Build, Sign & Publish Whister
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Whister release version (e.g. 160.0.8157.0)'
+        required: true
+      bucket_name:
+        description: 'Cloudflare R2 bucket name'
+        required: true
+        default: 'whister-updates'
+
+jobs:
+  build-and-publish:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout Whister repository
+        uses: actions/checkout@v4
+
+      - name: Run Whister build script
+        shell: pwsh
+        run: .\update_and_build.ps1
+
+      - name: Sign installer and generate manifest
+        shell: pwsh
+        env:
+          MANIFEST_PRIVATE_KEY: ${{ secrets.WHISTER_MANIFEST_PRIVATE_KEY }}
+        run: |
+          $KeyFile = Join-Path $env:TEMP "manifest-private.pem"
+          [System.IO.File]::WriteAllText($KeyFile, $env:MANIFEST_PRIVATE_KEY)
+
+          try {
+            $Installer = "C:\chromium\src\out\BetaRelease\mini_installer.exe"
+            .\Sign-WhisterLocalInstaller.ps1 -InstallerPath $Installer
+
+            .\New-WhisterUpdateManifest.ps1 `
+              -InstallerPath $Installer `
+              -Version "${{ inputs.version }}" `
+              -PrivateKeyPath $KeyFile `
+              -OutputPath "$env:TEMP\manifest.json"
+          }
+          finally {
+            if (Test-Path $KeyFile) { Remove-Item $KeyFile -Force }
+          }
+
+      - name: Upload to Cloudflare R2
+        shell: pwsh
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          $Ver = "${{ inputs.version }}"
+          $Bucket = "${{ inputs.bucket_name }}"
+          $Endpoint = "${{ secrets.R2_ENDPOINT }}"
+
+          aws s3 cp "C:\chromium\src\out\BetaRelease\mini_installer.exe" `
+            "s3://$Bucket/win/beta/WhisterSetup-$Ver.exe" `
+            --endpoint-url $Endpoint
+
+          aws s3 cp "$env:TEMP\manifest.json" `
+            "s3://$Bucket/win/beta/manifest.json" `
+            --cache-control "no-cache, no-store, must-revalidate" `
+            --endpoint-url $Endpoint
+
+          Remove-Item "$env:TEMP\manifest.json" -Force

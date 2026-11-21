@@ -1,0 +1,93 @@
+name: Check Whister Patches Against Upstream
+
+on:
+  schedule:
+    - cron: '0 6 * * *' # Runs daily at 06:00 UTC
+  push:
+    paths:
+      - 'patches/common/**'
+  workflow_dispatch:
+    inputs:
+      chromium_ref:
+        description: 'Chromium branch or tag (e.g. main or 160.0.8157.0)'
+        required: true
+        default: 'main'
+
+jobs:
+  patch-check:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Whister repository
+        uses: actions/checkout@v4
+
+      - name: Sparse-checkout Chromium target paths
+        shell: pwsh
+        run: |
+          $Ref = "${{ github.event.inputs.chromium_ref }}"
+          if ([string]::IsNullOrWhiteSpace($Ref)) { $Ref = "main" }
+
+          git clone --depth=1 --filter=blob:none --sparse --branch $Ref `
+            https://googlesource.com chromium-src
+
+          Set-Location chromium-src
+          git sparse-checkout set `
+            chrome/app `
+            chrome/browser `
+            chrome/browser/extensions `
+            chrome/browser/extensions/api/settings_private `
+            chrome/browser/extensions/component_extensions_allowlist `
+            chrome/browser/resources/settings `
+            chrome/browser/resources/settings/about_page `
+            chrome/browser/resources/settings/people_page `
+            chrome/browser/resources/settings/privacy_page `
+            chrome/browser/resources/settings/settings_menu `
+            chrome/browser/resources/settings/settings_ui `
+            chrome/browser/ui/color `
+            chrome/browser/ui/color/win `
+            chrome/browser/ui/startup `
+            chrome/browser/ui/toolbar `
+            chrome/browser/ui/views/page_info `
+            chrome/browser/ui/views/toolbar `
+            chrome/browser/ui/webui `
+            chrome/browser/whister_blocker `
+            chrome/common `
+            chrome/common/extensions `
+            chrome/installer/mini_installer `
+            chrome/renderer `
+            chrome/tools/build/win `
+            components/metrics `
+            content/common `
+            ui/views/bubble `
+            ui/webui/resources/css
+
+      - name: Dry-run Whister patches
+        shell: pwsh
+        run: |
+          Set-Location chromium-src
+          $Deferred = @(
+            "disable_telemetry.patch",
+            "register_whister_factory.patch",
+            "register_whister_resources.patch",
+            "register_whister_scheme.patch",
+            "whister_blocker_ui.patch",
+            "whister_domain_blocker.patch",
+            "whister_url_constants.patch"
+          )
+
+          $Failed = @()
+          Get-ChildItem ..\patches\common\*.patch | Sort-Object Name | ForEach-Object {
+            if ($Deferred -contains $_.Name) {
+              Write-Host "Skipping deferred patch: $($_.Name)"
+              return
+            }
+            Write-Host "Checking $($_.Name)..."
+            git apply --check $_.FullName
+            if ($LASTEXITCODE -ne 0) {
+              Write-Warning "Conflict detected in $($_.Name)"
+              $Failed += $_.Name
+            }
+          }
+
+          if ($Failed.Count -gt 0) {
+            throw "Patch check failed for: $($Failed -join ', ')"
+          }
