@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Text;
@@ -14,9 +15,12 @@ namespace WhisterAnimatedInstaller;
 
 public partial class MainWindow : Window
 {
+    private const long TemporarySpaceAllowanceBytes = 32L * 1024 * 1024;
     private readonly DispatcherTimer _progressTimer = new() { Interval = TimeSpan.FromMilliseconds(350) };
     private readonly Stopwatch _installClock = new();
     private readonly int _payloadFileCount;
+    private readonly long _payloadSizeBytes;
+    private readonly long _backendSizeBytes;
     private string? _installLogPath;
     private string _lastLogContent = string.Empty;
     private bool _detailedMode;
@@ -25,16 +29,15 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        _payloadFileCount = int.TryParse(ReadAssemblyMetadata("WhisterPayloadFileCount"), out var fileCount)
+            ? fileCount
+            : 0;
+        _payloadSizeBytes = ReadAssemblyMetadataBytes("WhisterPayloadSizeBytes");
+        _backendSizeBytes = ReadAssemblyMetadataBytes("WhisterBackendSizeBytes");
         InstallPathBox.Text = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "Programs", "Whister");
-        var fileCountMetadata = Assembly.GetExecutingAssembly()
-            .GetCustomAttributes<AssemblyMetadataAttribute>()
-            .FirstOrDefault(attribute => attribute.Key == "WhisterPayloadFileCount")
-            ?.Value;
-        _payloadFileCount = int.TryParse(fileCountMetadata, out var fileCount)
-            ? fileCount
-            : 0;
+        UpdateSpaceAvailability();
         var badgePulse = new DoubleAnimation(1, 1.06, TimeSpan.FromSeconds(1.8))
         {
             AutoReverse = true,
@@ -54,6 +57,174 @@ public partial class MainWindow : Window
         _progressTimer.Tick += AnimateProgress;
         Loaded += (_, _) => ShowPage(WelcomePage);
         Closing += (_, e) => e.Cancel = _isInstalling;
+    }
+
+    private static string? ReadAssemblyMetadata(string key) =>
+        Assembly.GetExecutingAssembly()
+            .GetCustomAttributes<AssemblyMetadataAttribute>()
+            .FirstOrDefault(attribute => attribute.Key == key)
+            ?.Value;
+
+    private static long ReadAssemblyMetadataBytes(string key) =>
+        long.TryParse(
+            ReadAssemblyMetadata(key),
+            NumberStyles.None,
+            CultureInfo.InvariantCulture,
+            out var bytes) && bytes > 0
+            ? bytes
+            : 0;
+
+    private static string FormatBytes(long bytes)
+    {
+        const double bytesPerMiB = 1024d * 1024d;
+        const double bytesPerGiB = bytesPerMiB * 1024d;
+        return bytes >= bytesPerGiB
+            ? $"{bytes / bytesPerGiB:0.##} GiB"
+            : $"{bytes / bytesPerMiB:0.#} MiB";
+    }
+
+    private static long GetSetupFileSizeBytes()
+    {
+        var executablePath = Environment.ProcessPath;
+        if (string.IsNullOrWhiteSpace(executablePath))
+        {
+            return 0;
+        }
+
+        try
+        {
+            return new FileInfo(executablePath).Length;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Trace.TraceWarning("Could not read the setup file size: {0}", ex.Message);
+            return 0;
+        }
+    }
+
+    private void InstallPathBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        ValidationMessage.Visibility = Visibility.Collapsed;
+        UpdateSpaceAvailability();
+    }
+
+    private void UpdateSpaceAvailability()
+    {
+        if (_payloadSizeBytes <= 0 || _backendSizeBytes <= 0)
+        {
+            SpaceRequirementText.Text =
+                "Space requirements are unavailable in this setup package. Rebuild the package before installing.";
+            SpaceAvailabilityText.Text = "Installation is disabled because its space requirement could not be verified.";
+            SpaceAvailabilityText.Foreground =
+                new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 155, 155));
+            InstallSpaceText.Text = SpaceRequirementText.Text;
+            InstallButton.IsEnabled = false;
+            return;
+        }
+
+        var temporaryRequiredBytes = checked(_backendSizeBytes + TemporarySpaceAllowanceBytes);
+        var setupFileSizeBytes = GetSetupFileSizeBytes();
+        SpaceRequirementText.Text =
+            $"Installed browser files: {FormatBytes(_payloadSizeBytes)} on the selected drive.\n" +
+            $"Temporary setup files: {FormatBytes(temporaryRequiredBytes)} on the Windows temp drive " +
+            $"(includes {FormatBytes(TemporarySpaceAllowanceBytes)} working room).\n" +
+            $"Downloaded setup file: {(setupFileSizeBytes > 0 ? FormatBytes(setupFileSizeBytes) : "size unavailable")} " +
+            "(already stored separately).";
+        InstallSpaceText.Text =
+            $"Estimated use: {FormatBytes(_payloadSizeBytes)} installed, plus " +
+            $"{FormatBytes(temporaryRequiredBytes)} temporary space.";
+
+        if (!TryGetInstallDirectory(out var installDirectory, out var pathError))
+        {
+            SpaceAvailabilityText.Text = pathError;
+            SpaceAvailabilityText.Foreground =
+                new SolidColorBrush(System.Windows.Media.Color.FromRgb(167, 179, 197));
+            InstallButton.IsEnabled = false;
+            return;
+        }
+
+        var hasEnoughSpace = TryCheckAvailableSpace(
+            installDirectory, out var availability, out _);
+        SpaceAvailabilityText.Text = availability;
+        SpaceAvailabilityText.Foreground = new SolidColorBrush(
+            hasEnoughSpace
+                ? System.Windows.Media.Color.FromRgb(139, 224, 181)
+                : System.Windows.Media.Color.FromRgb(255, 155, 155));
+        InstallButton.IsEnabled = true;
+    }
+
+    private bool TryCheckAvailableSpace(
+        string installDirectory,
+        out string availability,
+        out string error)
+    {
+        availability = string.Empty;
+        error = string.Empty;
+        if (_payloadSizeBytes <= 0 || _backendSizeBytes <= 0)
+        {
+            error = "This setup package is missing its space requirement metadata.";
+            availability = error;
+            return false;
+        }
+
+        try
+        {
+            var installRoot = Path.GetPathRoot(installDirectory);
+            var temporaryRoot = Path.GetPathRoot(Path.GetTempPath());
+            if (string.IsNullOrWhiteSpace(installRoot) || string.IsNullOrWhiteSpace(temporaryRoot))
+            {
+                throw new IOException("Windows could not determine the install or temporary drive.");
+            }
+
+            var installDrive = new DriveInfo(installRoot);
+            var temporaryDrive = new DriveInfo(temporaryRoot);
+            if (!installDrive.IsReady || !temporaryDrive.IsReady)
+            {
+                throw new IOException("The install drive or Windows temporary drive is not ready.");
+            }
+
+            var temporaryRequiredBytes = checked(_backendSizeBytes + TemporarySpaceAllowanceBytes);
+            var sameDrive = string.Equals(
+                installDrive.Name, temporaryDrive.Name, StringComparison.OrdinalIgnoreCase);
+            if (sameDrive)
+            {
+                var requiredBytes = checked(_payloadSizeBytes + temporaryRequiredBytes);
+                var availableBytes = installDrive.AvailableFreeSpace;
+                availability =
+                    $"{installDrive.Name} has {FormatBytes(availableBytes)} free; " +
+                    $"about {FormatBytes(requiredBytes)} is needed during setup " +
+                    $"({FormatBytes(_payloadSizeBytes)} installed + {FormatBytes(temporaryRequiredBytes)} temporary).";
+                if (availableBytes < requiredBytes)
+                {
+                    error = "There is not enough free space on the install and temporary drive.";
+                    return false;
+                }
+
+                return true;
+            }
+
+            var installAvailableBytes = installDrive.AvailableFreeSpace;
+            var temporaryAvailableBytes = temporaryDrive.AvailableFreeSpace;
+            availability =
+                $"{installDrive.Name}: {FormatBytes(installAvailableBytes)} free; " +
+                $"{FormatBytes(_payloadSizeBytes)} needed for installed files.\n" +
+                $"{temporaryDrive.Name}: {FormatBytes(temporaryAvailableBytes)} free; " +
+                $"{FormatBytes(temporaryRequiredBytes)} needed temporarily.";
+            if (installAvailableBytes < _payloadSizeBytes ||
+                temporaryAvailableBytes < temporaryRequiredBytes)
+            {
+                error = "There is not enough free space on the install drive or Windows temporary drive.";
+                return false;
+            }
+
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or OverflowException)
+        {
+            error = $"Could not verify available disk space: {ex.Message}";
+            availability = error;
+            return false;
+        }
     }
 
     private async void OptionsButton_Click(object sender, RoutedEventArgs e)
@@ -86,6 +257,16 @@ public partial class MainWindow : Window
     {
         if (!TryGetInstallDirectory(out var installDirectory, out var error))
         {
+            ValidationMessage.Text = error;
+            ValidationMessage.Visibility = Visibility.Visible;
+            return;
+        }
+
+        if (!TryCheckAvailableSpace(installDirectory, out var availability, out error))
+        {
+            SpaceAvailabilityText.Text = availability;
+            SpaceAvailabilityText.Foreground =
+                new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 155, 155));
             ValidationMessage.Text = error;
             ValidationMessage.Visibility = Visibility.Visible;
             return;

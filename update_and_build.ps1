@@ -17,7 +17,7 @@ if ($Channel -eq "stable") {
     $BuildOutPath = "out\StableRelease"
     $ConfigFile = "$MyRepoDir\config\stable_args.gn"
 } else {
-    $TargetChromiumVersion = "refs/tags/160.0.8157.0"
+    $TargetChromiumVersion = "refs/tags/160.0.8171.0"
     $BuildOutPath = "out\BetaRelease"
     $ConfigFile = "$MyRepoDir\config\beta_args.gn"
 }
@@ -127,17 +127,13 @@ if (Test-Path $CustomAssetsDir) {
         }
     }
 }
-
 $WhisterNewTabSrc = "$MyRepoDir\branding\common\new_tab_page"
 $WhisterNewTabDest = "$ChromiumSrcDir\chrome\browser\resources\whister_new_tab"
 New-Item -ItemType Directory -Path $WhisterNewTabDest -Force | Out-Null
 if (Test-Path (Join-Path $WhisterNewTabDest "blocker.html")) {
     Remove-Item -LiteralPath (Join-Path $WhisterNewTabDest "blocker.html") -Force
 }
-if (Test-Path (Join-Path $WhisterNewTabDest "whister-logo.png")) {
-    Remove-Item -LiteralPath (Join-Path $WhisterNewTabDest "whister-logo.png") -Force
-}
-foreach ($FileName in @("settings.html", "settings.css", "settings.js", "setup.html", "index.html", "style.css", "app.js")) {
+foreach ($FileName in @("settings.html", "settings.css", "settings.js", "setup.html", "index.html", "style.css", "app.js", "whister-logo.png")) {
     $SourceFile = Join-Path $WhisterNewTabSrc $FileName
     if (-not (Test-Path $SourceFile)) {
         throw "Required Whister settings asset is missing: $SourceFile"

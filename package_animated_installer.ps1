@@ -44,16 +44,24 @@ if (-not (Test-Path $BackendPath)) {
     throw "Whister installer backend was not created: $BackendPath"
 }
 $StageDirectory = Join-Path $Repo "dist\stage"
-$PayloadFileCount = @(Get-ChildItem $StageDirectory -File -Recurse).Count
+$PayloadFiles = @(Get-ChildItem $StageDirectory -File -Recurse)
+$PayloadFileCount = $PayloadFiles.Count
 if ($PayloadFileCount -eq 0) {
     throw "No installer payload files were staged in $StageDirectory"
+}
+$PayloadSizeBytes = [long](($PayloadFiles | Measure-Object -Property Length -Sum).Sum)
+$BackendSizeBytes = [long](Get-Item -LiteralPath $BackendPath).Length
+if ($PayloadSizeBytes -le 0 -or $BackendSizeBytes -le 0) {
+    throw "Could not determine the installer payload and temporary space requirements."
 }
 
 $OutPath = Join-Path $Dist $OutName
 $AnimatedPublishDirectory = Join-Path $Dist "animated-publish"
 & dotnet publish $AnimatedProject -c Release -r win-x64 --self-contained true `
     -p:PublishSingleFile=true "-p:InstallerPayloadPath=$BackendPath" `
-    "-p:WhisterPayloadFileCount=$PayloadFileCount" "-p:Version=$AppVersion" `
+    "-p:WhisterPayloadFileCount=$PayloadFileCount" `
+    "-p:WhisterPayloadSizeBytes=$PayloadSizeBytes" `
+    "-p:WhisterBackendSizeBytes=$BackendSizeBytes" "-p:Version=$AppVersion" `
     -o $AnimatedPublishDirectory
 if ($LASTEXITCODE -ne 0) {
     throw "Animated Whister installer publish failed ($LASTEXITCODE)"

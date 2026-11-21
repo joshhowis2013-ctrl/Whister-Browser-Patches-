@@ -73,6 +73,15 @@ $StagedManifest = Join-Path $ExtensionDestination "manifest.json"
 if (-not (Test-Path $StagedManifest)) {
     throw "The uBlock Origin manifest was not staged."
 }
+$StagedManifestData = Get-Content $StagedManifest -Raw | ConvertFrom-Json
+$StagedManifestData.name = "uBlock Origin"
+$StagedManifestData.short_name = "uBlock Origin"
+$StagedManifestData.browser_action.default_title = "uBlock Origin"
+[System.IO.File]::WriteAllText(
+    $StagedManifest,
+    ($StagedManifestData | ConvertTo-Json -Depth 100),
+    [System.Text.UTF8Encoding]::new($false)
+)
 if (-not (Test-Path (Join-Path $ExtensionDestination "LICENSE.txt"))) {
     throw "The bundled uBlock Origin license was not copied."
 }

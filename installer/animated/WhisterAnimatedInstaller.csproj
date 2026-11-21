@@ -9,12 +9,15 @@
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <AssemblyName>WhisterAnimatedSetup</AssemblyName>
     <ApplicationIcon>..\whister.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <AssemblyMetadata Include="WhisterPayloadFileCount" Value="$(WhisterPayloadFileCount)" />
+    <AssemblyMetadata Include="WhisterPayloadSizeBytes" Value="$(WhisterPayloadSizeBytes)" />
+    <AssemblyMetadata Include="WhisterBackendSizeBytes" Value="$(WhisterBackendSizeBytes)" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="$(InstallerPayloadPath)" LogicalName="WhisterAnimatedInstaller.Payload.exe" />

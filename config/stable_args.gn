@@ -14,6 +14,9 @@ enable_reporting = false
 enable_mdns = false
 enable_remoting = false
 use_official_google_api_keys = false
+google_api_key = ""
+google_default_client_id = ""
+google_default_client_secret = ""
 
 # --- The Safe Browsing Network Sever ---
 # We allow the files to compile so dependencies resolve, but we disable the cloud engines
