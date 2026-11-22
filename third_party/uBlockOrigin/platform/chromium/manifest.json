@@ -114,5 +114,6 @@
   "version": "1.15.11.0",
   "web_accessible_resources": [
     "/web_accessible_resources/*"
-  ]
+  ],
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAl7DLO+a1kImX7/l4jfBDJKEkHcDfD28vlQVFefTuPGNRxjDqhrKwL9F81rVrDUoPvHWFPb//+7sm6zXGVHs7isnQj7nW3sZDywlaP1tExdqditoRndxL0j3uUAQbT0sg+IVFpDCCYraQ/bscW+toc3kfoqW2Tk5sxHXyxZ1D39X/2DD1hPC7JkMhTmIrqpptAlkl9Q0i3ef6quGr3e3lIrpJhm46v+DvWrMhPxI2OHRDqTLlbQX3ISdB45t/wwKXe1fJ25MZXyc/QsXiuCRaa/0q2vN7LZBqS+6ytBYYztfD5Q/P64RTUKJrh5sJwBgMib/gMGBJMtnrVY44g93gWQIDAQAB"
 }
