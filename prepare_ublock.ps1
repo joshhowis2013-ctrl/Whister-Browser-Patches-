@@ -53,7 +53,7 @@ if (-not $Manifest.key) {
     throw "The uBlock Origin manifest must have a stable public key."
 }
 $PublicKey = [Convert]::FromBase64String($Manifest.key)
-$Hash = [System.Security.Cryptography.SHA256]::HashData($PublicKey)
+$sha256 = [System.Security.Cryptography.SHA256]::Create(); try { $Hash = $sha256.ComputeHash($PublicKey) } finally { $sha256.Dispose() }
 $ExtensionId = -join ($Hash[0..15] | ForEach-Object {
     $byte = $_
     [char]([int][char]'a' + ($byte -shr 4))
