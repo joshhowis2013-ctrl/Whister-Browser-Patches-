@@ -28,3 +28,5 @@ enable_nacl = false
 enable_hangout_services_extension = false
 optimize_webui = true
 load_webui_from_disk = false
+
+cc_wrapper = "sccache"
