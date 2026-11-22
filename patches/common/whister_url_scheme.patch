@@ -107,7 +107,7 @@ index e4b80d928de18..905ab4ee558c3 100644
  
  namespace chrome {
  
-+inline constexpr char kWhisterScheme = "whister";
++inline constexpr char kWhisterScheme[] = "whister";
 +
  // "Learn more" URL linked in the dialog to cast using a code.
  inline constexpr char kAccessCodeCastLearnMoreURL[] =
