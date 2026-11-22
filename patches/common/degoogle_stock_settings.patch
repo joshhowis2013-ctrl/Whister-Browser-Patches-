@@ -72,7 +72,7 @@ index ad1a046b7d475..3484aae04091c 100644
    }
  
 -  if (visibility.ai !== false && loadTimeData.getBoolean('showAiPage')) {
-+  if (false && visibility.ai !== false && loadTimeData.getBoolean('showAiPage')) {
++  if (Boolean(0) && visibility.ai !== false && loadTimeData.getBoolean('showAiPage')) {
      r.AI = r.BASIC.createSection(
          '/ai', 'ai', loadTimeData.getString('aiPageTitle'));
      if (loadTimeData.getBoolean('enableAiModeSearchSetting')) {
