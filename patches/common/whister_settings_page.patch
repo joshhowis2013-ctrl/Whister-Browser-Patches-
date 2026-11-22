@@ -1,21 +1,10 @@
-diff --git a/chrome/browser/ui/webui/BUILD.gn b/chrome/browser/ui/webui/BUILD.gn
---- a/chrome/browser/ui/webui/BUILD.gn
-+++ b/chrome/browser/ui/webui/BUILD.gn
-@@ -66,0 +67,1 @@
-+    "//chrome/browser/ui/webui/whister",
-diff --git a/chrome/browser/ui/webui/chrome_web_ui_configs.cc b/chrome/browser/ui/webui/chrome_web_ui_configs.cc
---- a/chrome/browser/ui/webui/chrome_web_ui_configs.cc
-+++ b/chrome/browser/ui/webui/chrome_web_ui_configs.cc
-@@ -21,0 +22,1 @@
-+#include "chrome/browser/ui/webui/whister/whister_settings_ui.h"
-@@ -273,0 +275,3 @@
-+  map.AddWebUIConfig(std::make_unique<whister::WhisterSettingsUIConfig>());
-+  map.AddWebUIConfig(std::make_unique<whister::WhisterSetupUIConfig>());
-+  map.AddWebUIConfig(std::make_unique<whister::WhisterNewTabUIConfig>());
 diff --git a/chrome/browser/browser_resources.grd b/chrome/browser/browser_resources.grd
+index 0833916cfc2c2..29356a1e20a16 100644
 --- a/chrome/browser/browser_resources.grd
 +++ b/chrome/browser/browser_resources.grd
-@@ -106,2 +106,9 @@
+@@ -106,6 +106,14 @@
+       </if>
+ 
        <include name="IDR_AD_NETWORK_HASHES" file="resources\ad_networks.dat" type="BINDATA" />
 +      <include name="IDR_WHISTER_SETTINGS_HTML" file="resources\whister_new_tab\settings.html" type="BINDATA" />
 +      <include name="IDR_WHISTER_SETTINGS_CSS" file="resources\whister_new_tab\settings.css" type="BINDATA" />
@@ -26,12 +15,349 @@ diff --git a/chrome/browser/browser_resources.grd b/chrome/browser/browser_resou
 +      <include name="IDR_WHISTER_NEW_TAB_JS" file="resources\whister_new_tab\app.js" type="BINDATA" />
 +      <include name="IDR_WHISTER_NEW_TAB_LOGO" file="resources\whister_new_tab\whister-logo.png" type="BINDATA" />
        <if expr="is_chromeos">
+         <include name="IDR_CHROME_APP_MANIFEST" file="resources\chrome_app\manifest.json" type="BINDATA" />
+         <include name="IDR_URL_MOJOM_LITE_JS" file="${root_gen_dir}\url\mojom\url.mojom-lite.js" use_base_dir="false" type="BINDATA" />
 diff --git a/chrome/browser/ui/startup/startup_browser_creator_impl.cc b/chrome/browser/ui/startup/startup_browser_creator_impl.cc
+index 23a56131e3f17..a2c815071f8f8 100644
 --- a/chrome/browser/ui/startup/startup_browser_creator_impl.cc
 +++ b/chrome/browser/ui/startup/startup_browser_creator_impl.cc
-@@ -706,0 +707,5 @@
+@@ -298,6 +298,11 @@ BrowserWindowInterface* StartupBrowserCreatorImpl::OpenURLsInBrowser(
+     chrome::startup::IsProcessStartup process_startup,
+     const std::vector<GURL>& urls) {
+   StartupTabs tabs;
 +    if (is_first_run_ == chrome::startup::IsFirstRun::kYes) {
 +      StartupTabs setup_tabs;
 +      setup_tabs.emplace_back(GURL("whister://setup"));
 +      PrependTabs(setup_tabs, &tabs);
 +    }
+   UrlsToTabs(urls, &tabs);
+   return OpenTabsInBrowser(browser, process_startup, tabs, TabOverWrite::kNo);
+ }
+diff --git a/chrome/browser/ui/webui/BUILD.gn b/chrome/browser/ui/webui/BUILD.gn
+index d494db4d1f073..b9cb0565494a8 100644
+--- a/chrome/browser/ui/webui/BUILD.gn
++++ b/chrome/browser/ui/webui/BUILD.gn
+@@ -42,6 +42,7 @@ source_set("configs") {
+   ]
+ 
+   deps = [
++    "//chrome/browser/ui/webui/whister",
+     ":gcm_internals_ui",
+     ":net_export_ui",
+     ":ntp_tiles_internals_ui",
+@@ -318,6 +319,7 @@ source_set("webui") {
+   sources += get_target_outputs(":webui_url_hashes")
+ 
+   public_deps = [
++    "//chrome/browser/ui/webui/whister",
+     ":plural_string_handler",
+     ":webui_hosts",
+     ":webui_url_hashes",
+@@ -343,6 +345,7 @@ source_set("webui_util") {
+   ]
+ 
+   deps = [
++    "//chrome/browser/ui/webui/whister",
+     "//chrome/browser/ui/browser_window",
+     "//chrome/browser/ui/tabs:tabs_public",
+   ]
+@@ -357,11 +360,13 @@ if (enable_extensions_core || enable_webui_ntp ||
+     sources = [ "favicon_source.cc" ]
+     public = [ "favicon_source.h" ]
+     public_deps = [
++    "//chrome/browser/ui/webui/whister",
+       "//base",
+       "//components/favicon/core",
+       "//content/public/browser",
+     ]
+     deps = [
++    "//chrome/browser/ui/webui/whister",
+       "//chrome/browser/favicon",
+       "//chrome/browser/history",
+       "//chrome/browser/profiles:profile",
+@@ -402,6 +407,7 @@ if (!is_android || enable_webui_ntp) {
+     testonly = true
+     sources = [ "favicon_source_unittest.cc" ]
+     deps = [
++    "//chrome/browser/ui/webui/whister",
+       ":favicon_source",
+       "//base",
+       "//base/test:test_support",
+@@ -438,6 +444,7 @@ source_set("current_channel_logo") {
+   sources = [ "current_channel_logo.cc" ]
+   public = [ "current_channel_logo.h" ]
+   deps = [
++    "//chrome/browser/ui/webui/whister",
+     "//base",
+     "//build:branding_buildflags",
+     "//chrome/app/theme:theme_resources",
+@@ -449,10 +456,12 @@ source_set("theme_source") {
+   sources = [ "theme_source.cc" ]
+   public = [ "theme_source.h" ]
+   public_deps = [
++    "//chrome/browser/ui/webui/whister",
+     "//base",
+     "//content/public/browser",
+   ]
+   deps = [
++    "//chrome/browser/ui/webui/whister",
+     ":current_channel_logo",
+     "//chrome/app/theme:theme_resources",
+     "//chrome/browser:resources_util",
+@@ -505,12 +514,14 @@ source_set("theme_colors_source_manager") {
+     "theme_colors_source_manager_factory.h",
+   ]
+   public_deps = [
++    "//chrome/browser/ui/webui/whister",
+     "//chrome/browser/profiles:profile",
+     "//components/keyed_service/core",
+     "//content/public/common",
+     "//url",
+   ]
+   deps = [
++    "//chrome/browser/ui/webui/whister",
+     ":theme_source",
+     "//chrome/browser/themes",
+     "//chrome/browser/ui:ui_features",
+@@ -531,12 +542,14 @@ if (!is_android) {
+     sources = [ "theme_handler.cc" ]
+     public = [ "theme_handler.h" ]
+     public_deps = [
++    "//chrome/browser/ui/webui/whister",
+       "//base",
+       "//chrome/browser/themes",
+       "//content/public/browser",
+       "//ui/native_theme",
+     ]
+     deps = [
++    "//chrome/browser/ui/webui/whister",
+       ":theme_source",
+       "//chrome/app/theme:theme_resources",
+       "//chrome/browser/profiles:profile",
+@@ -548,6 +561,7 @@ if (!is_android) {
+     testonly = true
+     sources = [ "theme_source_unittest.cc" ]
+     deps = [
++    "//chrome/browser/ui/webui/whister",
+       ":theme_source",
+       "//base",
+       "//base/test:test_support",
+@@ -572,6 +586,7 @@ source_set("plural_string_handler") {
+     "plural_string_handler.h",
+   ]
+   deps = [
++    "//chrome/browser/ui/webui/whister",
+     "//base",
+     "//content/public/browser",
+     "//ui/base",
+@@ -585,6 +600,7 @@ source_set("log_web_ui_url") {
+     "log_web_ui_url.h",
+   ]
+   deps = [
++    "//chrome/browser/ui/webui/whister",
+     "//base",
+     "//content/public/browser",
+     "//url",
+@@ -598,10 +614,12 @@ source_set("fileicon_source") {
+   sources = [ "fileicon_source.cc" ]
+   public = [ "fileicon_source.h" ]
+   public_deps = [
++    "//chrome/browser/ui/webui/whister",
+     "//chrome/browser:icon_manager",
+     "//content/public/browser",
+   ]
+   deps = [
++    "//chrome/browser/ui/webui/whister",
+     "//base",
+     "//chrome/browser:browser_process",
+     "//chrome/common",
+@@ -615,6 +633,7 @@ source_set("metrics_handler") {
+   sources = [ "metrics_handler.cc" ]
+   public = [ "metrics_handler.h" ]
+   deps = [
++    "//chrome/browser/ui/webui/whister",
+     "//base",
+     "//chrome/browser/ui/tab_contents",
+   ]
+@@ -625,12 +644,14 @@ source_set("chrome_web_ui_controller_factory") {
+   sources = [ "chrome_web_ui_controller_factory.cc" ]
+   public = [ "chrome_web_ui_controller_factory.h" ]
+   public_deps = [
++    "//chrome/browser/ui/webui/whister",
+     "//base",
+     "//components/favicon_base",
+     "//content/public/browser",
+     "//ui/base",
+   ]
+   deps = [
++    "//chrome/browser/ui/webui/whister",
+     "//chrome/browser:buildflags",
+     "//chrome/browser:flags",
+     "//chrome/browser/contextual_tasks:ui",
+@@ -739,11 +760,13 @@ if (enable_extensions_core) {
+     sources = [ "managed_ui_handler.cc" ]
+     public = [ "managed_ui_handler.h" ]
+     public_deps = [
++    "//chrome/browser/ui/webui/whister",
+       "//components/policy/core/common",
+       "//components/prefs",
+       "//content/public/browser",
+     ]
+     deps = [
++    "//chrome/browser/ui/webui/whister",
+       "//chrome/browser:browser_process",
+       "//chrome/browser/policy",
+       "//chrome/browser/profiles:profile",
+@@ -761,6 +784,7 @@ if (is_win || is_mac || is_linux) {
+     public = [ "profile_helper.h" ]
+     public_deps = [ "//chrome/browser/profiles:profile" ]
+     deps = [
++    "//chrome/browser/ui/webui/whister",
+       "//chrome/browser:browser_process",
+       "//chrome/browser/profiles",
+       "//chrome/browser/signin",
+@@ -778,6 +802,7 @@ if (is_chromeos) {
+     public = [ "certificate_provisioning_ui_handler.h" ]
+     public_deps = [ "//content/public/browser" ]
+     deps = [
++    "//chrome/browser/ui/webui/whister",
+       "//chrome/browser:browser_process",
+       "//chrome/browser:browser_process_platform_part",
+       "//chrome/browser/ash/cert_provisioning",
+@@ -799,6 +824,7 @@ source_set("prefs_internals_source") {
+     "prefs_internals_source.h",
+   ]
+   deps = [
++    "//chrome/browser/ui/webui/whister",
+     "//base",
+     "//chrome/browser/profiles:profile",
+     "//chrome/common",
+@@ -815,6 +841,7 @@ if (!is_android) {
+       "chrome_content_browser_client_webui_part.h",
+     ]
+     deps = [
++    "//chrome/browser/ui/webui/whister",
+       "//chrome/browser:chrome_content_browser_client_parts",
+       "//chrome/browser/profiles:profile",
+       "//chrome/browser/ui/webui/top_chrome",
+@@ -830,10 +857,12 @@ if (!is_android) {
+     sources = [ "chrome_web_contents_handler.cc" ]
+     public = [ "chrome_web_contents_handler.h" ]
+     public_deps = [
++    "//chrome/browser/ui/webui/whister",
+       "//components/captive_portal/core",
+       "//ui/web_dialogs",
+     ]
+     deps = [
++    "//chrome/browser/ui/webui/whister",
+       "//base",
+       "//chrome/browser:file_select_helper",
+       "//chrome/browser/profiles:profile",
+@@ -858,6 +887,7 @@ if (!is_android) {
+     public = [ "extension_control_handler.h" ]
+     public_deps = [ "//chrome/browser/ui/webui/settings" ]
+     deps = [
++    "//chrome/browser/ui/webui/whister",
+       "//chrome/browser/profiles:profile",
+       "//content/public/browser",
+       "//extensions/browser",
+@@ -869,6 +899,7 @@ if (!is_android) {
+     public = [ "policy_indicator_localized_strings_provider.h" ]
+     public_deps = [ "//content/public/browser" ]
+     deps = [
++    "//chrome/browser/ui/webui/whister",
+       "//chrome/app:generated_resources",
+       "//components/sync/base:features",
+       "//ui/base",
+@@ -885,6 +916,7 @@ if (!is_android) {
+       "webui_load_timer.h",
+     ]
+     deps = [
++    "//chrome/browser/ui/webui/whister",
+       "//base",
+       "//content/public/browser",
+     ]
+@@ -898,6 +930,7 @@ source_set("ntp_tiles_internals_ui") {
+   public_deps = [ "//chrome/common" ]
+ 
+   deps = [
++    "//chrome/browser/ui/webui/whister",
+     "//base",
+     "//chrome/browser/favicon",
+     "//chrome/browser/history",
+@@ -923,11 +956,13 @@ source_set("gcm_internals_ui") {
+   public = [ "gcm_internals_ui.h" ]
+ 
+   public_deps = [
++    "//chrome/browser/ui/webui/whister",
+     "//chrome/common",
+     "//content/public/browser",
+   ]
+ 
+   deps = [
++    "//chrome/browser/ui/webui/whister",
+     "//base",
+     "//chrome/browser/gcm",
+     "//components/gcm_driver/resources:resources_grit",
+@@ -940,6 +975,7 @@ source_set("signin_internals_ui") {
+   public = [ "signin_internals_ui.h" ]
+ 
+   public_deps = [
++    "//chrome/browser/ui/webui/whister",
+     "//base",
+     "//chrome/common",
+     "//components/signin/public/base:signin_buildflags",
+@@ -947,6 +983,7 @@ source_set("signin_internals_ui") {
+   ]
+ 
+   deps = [
++    "//chrome/browser/ui/webui/whister",
+     "//chrome/browser/profiles:profile",
+     "//chrome/browser/signin",
+     "//components/signin/public/base",
+@@ -973,6 +1010,7 @@ source_set("net_export_ui") {
+   public_deps = [ "//chrome/common" ]
+ 
+   deps = [
++    "//chrome/browser/ui/webui/whister",
+     "//base",
+     "//chrome/browser:browser_process",
+     "//chrome/browser:primitives",
+@@ -1004,6 +1042,7 @@ if (!is_android) {
+       "webui_url_hashes_browsertest.cc",
+     ]
+     deps = [
++    "//chrome/browser/ui/webui/whister",
+       ":chrome_content_browser_client_webui_part",
+       ":chrome_web_contents_handler",
+       ":chrome_web_ui_controller_factory",
+@@ -1097,6 +1136,7 @@ source_set("unit_tests") {
+     "theme_colors_source_manager_unittest.cc",
+   ]
+   deps = [
++    "//chrome/browser/ui/webui/whister",
+     ":fileicon_source",
+     ":log_web_ui_url",
+     ":theme_colors_source_manager",
+diff --git a/chrome/browser/ui/webui/chrome_web_ui_configs.cc b/chrome/browser/ui/webui/chrome_web_ui_configs.cc
+index 264349e1fb9b4..b3eaa70f9e95c 100644
+--- a/chrome/browser/ui/webui/chrome_web_ui_configs.cc
++++ b/chrome/browser/ui/webui/chrome_web_ui_configs.cc
+@@ -18,6 +18,7 @@
+ #include "chrome/browser/ui/webui/autofill_and_password_manager_internals/autofill_internals_ui.h"
+ #include "chrome/browser/ui/webui/autofill_and_password_manager_internals/password_manager_internals_ui.h"
+ #include "chrome/browser/ui/webui/bluetooth_internals/bluetooth_internals_ui.h"
++#include "chrome/browser/ui/webui/whister/whister_settings_ui.h"
+ #include "chrome/browser/ui/webui/chrome_urls/chrome_urls_ui.h"
+ #include "chrome/browser/ui/webui/commerce/commerce_internals_ui_config.h"
+ #include "chrome/browser/ui/webui/components/components_ui.h"
+@@ -270,6 +271,9 @@ void RegisterChromeWebUIConfigs() {
+   map.AddWebUIConfig(std::make_unique<AccessibilityUIConfig>());
+   map.AddWebUIConfig(std::make_unique<AutofillInternalsUIConfig>());
+   map.AddWebUIConfig(std::make_unique<BluetoothInternalsUIConfig>());
++  map.AddWebUIConfig(std::make_unique<whister::WhisterSettingsUIConfig>());
++  map.AddWebUIConfig(std::make_unique<whister::WhisterSetupUIConfig>());
++  map.AddWebUIConfig(std::make_unique<whister::WhisterNewTabUIConfig>());
+   map.AddWebUIConfig(
+       std::make_unique<browser_actuator::BrowserActuatorInternalsUIConfig>());
+   map.AddWebUIConfig(std::make_unique<chrome_urls::ChromeUrlsUIConfig>());

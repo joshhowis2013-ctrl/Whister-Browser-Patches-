@@ -1,7 +1,9 @@
 diff --git a/chrome/browser/ui/color/chrome_color_mixer.cc b/chrome/browser/ui/color/chrome_color_mixer.cc
+index 460e9aedab486..314d2e894c7d6 100644
 --- a/chrome/browser/ui/color/chrome_color_mixer.cc
 +++ b/chrome/browser/ui/color/chrome_color_mixer.cc
-@@ -867,3 +867,12 @@
+@@ -849,6 +849,27 @@ void AddChromeColorMixer(ui::ColorProvider* provider,
+   mixer[kColorToolbarText] = {kColorToolbarTextDefault};
    mixer[kColorToolbarTextDefault] = {dark_mode ? SK_ColorWHITE
                                                 : gfx::kGoogleGrey800};
 +  if (dark_mode) {
@@ -26,12 +28,13 @@ diff --git a/chrome/browser/ui/color/chrome_color_mixer.cc b/chrome/browser/ui/c
 +    mixer[kColorTabForegroundActiveFrameActive] = {SkColorSetRGB(0xe2, 0xe8, 0xf0)};
 +  }
    mixer[kColorToolbarTextDisabled] = {kColorToolbarTextDisabledDefault};
+   mixer[kColorToolbarTextDisabledDefault] =
+       ui::SetAlpha(kColorToolbarText, gfx::kDisabledControlAlpha);
 diff --git a/chrome/browser/ui/color/win/native_chrome_color_mixer_win.cc b/chrome/browser/ui/color/win/native_chrome_color_mixer_win.cc
+index 697d33f5abdc6..ab071e31f78e5 100644
 --- a/chrome/browser/ui/color/win/native_chrome_color_mixer_win.cc
 +++ b/chrome/browser/ui/color/win/native_chrome_color_mixer_win.cc
-@@ -344,6 +344,21 @@
-   if (key.contrast_mode == ui::ColorProviderKey::ContrastMode::kHigh) {
-     AddNativeHighContrastColors(mixer);
+@@ -346,4 +346,23 @@ void AddNativeChromeColorMixer(ui::ColorProvider* provider,
    } else {
      AddNativeNonHighContrastColors(mixer, key);
    }

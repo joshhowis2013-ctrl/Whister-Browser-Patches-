@@ -1,7 +1,8 @@
 diff --git a/chrome/browser/ui/startup/infobar_utils.cc b/chrome/browser/ui/startup/infobar_utils.cc
+index 94d977bdfcc44..2eca735724545 100644
 --- a/chrome/browser/ui/startup/infobar_utils.cc
 +++ b/chrome/browser/ui/startup/infobar_utils.cc
-@@ -253,20 +251,6 @@
+@@ -253,19 +253,6 @@ void AddInfoBarsIfNecessary(BrowserWindowInterface* browser,
    infobars::ContentInfoBarManager* infobar_manager =
        infobars::ContentInfoBarManager::FromWebContents(web_contents);
  
@@ -18,7 +19,6 @@ diff --git a/chrome/browser/ui/startup/infobar_utils.cc b/chrome/browser/ui/star
 -      GoogleApiKeysInfoBarDelegate::Create(infobar_manager);
 -    }
 -  }
--
+ 
    if (ObsoleteSystem::IsObsoleteNowOrSoon()) {
      PrefService* local_state = g_browser_process->local_state();
-     if (!local_state ||

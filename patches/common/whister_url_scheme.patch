@@ -1,42 +1,21 @@
-diff --git a/chrome/common/url_constants.h b/chrome/common/url_constants.h
---- a/chrome/common/url_constants.h
-+++ b/chrome/common/url_constants.h
-@@ -24,4 +24,6 @@ namespace chrome {
- 
-+inline constexpr char kWhisterScheme[] = "whister";
-+
- // "Learn more" URL linked in the dialog to cast using a code.
- inline constexpr char kAccessCodeCastLearnMoreURL[] =
-     "https://support.google.com/chrome/a/?p=cast_to_class_teacher";
-diff --git a/chrome/common/chrome_content_client.cc b/chrome/common/chrome_content_client.cc
---- a/chrome/common/chrome_content_client.cc
-+++ b/chrome/common/chrome_content_client.cc
-@@ -194,3 +194,4 @@ static const char* const kChromeStandardURLSchemes[] = {
-+    chrome::kWhisterScheme,
- #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
-     extensions::kExtensionScheme,
- #endif
-@@ -208,5 +209,6 @@ void ChromeContentClient::AddAdditionalSchemes(Schemes* schemes) {
-   for (auto* standard_scheme : kChromeStandardURLSchemes)
-     schemes->standard_schemes.push_back(standard_scheme);
-+  schemes->secure_schemes.push_back(chrome::kWhisterScheme);
- 
- #if BUILDFLAG(IS_ANDROID)
-   schemes->referrer_schemes.push_back(content::kAndroidAppScheme);
 diff --git a/chrome/browser/browser_about_handler.cc b/chrome/browser/browser_about_handler.cc
+index 55f00f3c41c01..83572f6a39992 100644
 --- a/chrome/browser/browser_about_handler.cc
 +++ b/chrome/browser/browser_about_handler.cc
-@@ -53,6 +53,21 @@ bool HandleChromeAboutAndChromeSyncRewrite(
+@@ -52,25 +52,45 @@ bool HandleChromeAboutAndChromeSyncRewrite(
+   DCHECK(url->IsAboutBlank() || url->IsAboutSrcdoc() ||
+          !url->SchemeIs(url::kAboutScheme));
+ 
 -  // Only handle chrome: URLs.
 -  if (!url->SchemeIs(content::kChromeUIScheme)) {
 +  const bool is_whister_url = url->SchemeIs(chrome::kWhisterScheme);
 +  if (!url->SchemeIs(content::kChromeUIScheme) && !is_whister_url) {
-     return false;
-   }
-+  if (is_whister_url &&
-+      (url->has_username() || url->has_password() || url->has_port())) {
 +    return false;
 +  }
++  if (is_whister_url &&
++      (url->has_username() || url->has_password() || url->has_port())) {
+     return false;
+   }
  
    std::string host(url->GetHost());
 +  if (is_whister_url) {
@@ -50,7 +29,16 @@ diff --git a/chrome/browser/browser_about_handler.cc b/chrome/browser/browser_ab
 +      return false;
 +    }
 +  }
-@@ -78,5 +93,10 @@ bool HandleChromeAboutAndChromeSyncRewrite(
+   if (host == chrome::kChromeUIAboutHost) {
+     // Replace chrome://about with chrome://chrome-urls.
+     host = chrome::kChromeUIChromeURLsHost;
+   }
+   if (host == "welcome" || host == "welcome-win10") {
+     host = "whister-setup";
+   } else if (host == "newtab") {
+     host = "whister-newtab";
+   }
+ 
 -  if (host != url->GetHost()) {
 +  if (is_whister_url || host != url->GetHost()) {
      GURL::Replacements replacements;
@@ -63,13 +51,12 @@ diff --git a/chrome/browser/browser_about_handler.cc b/chrome/browser/browser_ab
 +    }
      *url = url->ReplaceComponents(replacements);
    }
+ 
 diff --git a/chrome/browser/browser_about_handler_unittest.cc b/chrome/browser/browser_about_handler_unittest.cc
+index e1251a6e4c0a5..4e16717b57293 100644
 --- a/chrome/browser/browser_about_handler_unittest.cc
 +++ b/chrome/browser/browser_about_handler_unittest.cc
-@@ -137,8 +153,24 @@ TEST_F(BrowserAboutHandlerTest,
-   std::vector<AboutURLTestCase> test_cases(
-       {{GURL(chrome_prefix + chrome::kChromeUISettingsHost),
-         GURL(chrome_prefix + chrome::kChromeUISettingsHost)}});
+@@ -140,6 +140,22 @@ TEST_F(BrowserAboutHandlerTest,
    TestHandleChromeAboutAndChromeSyncRewrite(test_cases);
  }
  
@@ -91,3 +78,37 @@ diff --git a/chrome/browser/browser_about_handler_unittest.cc b/chrome/browser/b
 +
  TEST_F(BrowserAboutHandlerTest,
         HandleChromeAboutAndChromeSyncRewriteForHistory) {
+   GURL::Replacements replace_foo_query;
+diff --git a/chrome/common/chrome_content_client.cc b/chrome/common/chrome_content_client.cc
+index c845ef3303c75..af6b98146e3cb 100644
+--- a/chrome/common/chrome_content_client.cc
++++ b/chrome/common/chrome_content_client.cc
+@@ -187,6 +187,7 @@ void ChromeContentClient::AddContentDecryptionModules(
+ // details). If you add a new scheme, please also add WPT tests for it like
+ // https://crrev.com/c/5790445.
+ static const char* const kChromeStandardURLSchemes[] = {
++    chrome::kWhisterScheme,
+ #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+     extensions::kExtensionScheme,
+ #endif
+@@ -205,6 +206,7 @@ static const char* const kChromeStandardURLSchemes[] = {
+ void ChromeContentClient::AddAdditionalSchemes(Schemes* schemes) {
+   for (auto* standard_scheme : kChromeStandardURLSchemes)
+     schemes->standard_schemes.push_back(standard_scheme);
++  schemes->secure_schemes.push_back(chrome::kWhisterScheme);
+ 
+ #if BUILDFLAG(IS_ANDROID)
+   schemes->referrer_schemes.push_back(content::kAndroidAppScheme);
+diff --git a/chrome/common/url_constants.h b/chrome/common/url_constants.h
+index e4b80d928de18..905ab4ee558c3 100644
+--- a/chrome/common/url_constants.h
++++ b/chrome/common/url_constants.h
+@@ -28,6 +28,8 @@
+ 
+ namespace chrome {
+ 
++inline constexpr char kWhisterScheme = "whister";
++
+ // "Learn more" URL linked in the dialog to cast using a code.
+ inline constexpr char kAccessCodeCastLearnMoreURL[] =
+     "https://support.google.com/chrome/a/?p=cast_to_class_teacher";

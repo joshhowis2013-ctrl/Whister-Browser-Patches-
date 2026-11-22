@@ -1,13 +1,16 @@
 diff --git a/ui/webui/resources/css/md_colors.css b/ui/webui/resources/css/md_colors.css
+index 14de642d463df..5adc7285b2226 100644
 --- a/ui/webui/resources/css/md_colors.css
 +++ b/ui/webui/resources/css/md_colors.css
-@@ -15,6 +15,6 @@
+@@ -13,9 +13,9 @@ html {
+ 
  @media (prefers-color-scheme: dark) {
    html {
 -    --md-background-color: rgb(32, 33, 36);  /* --google-grey-900 */
-+    --md-background-color: rgb(13, 14, 21);
++    --md-background-color: rgb(13, 14, 21);  /* --google-grey-900 */
      --md-loading-message-color: #9AA0A6;  /* --google-grey-500 */
      /* --cr-separator-line */
 -    --md-toolbar-border: 1px solid rgba(255, 255, 255, .1);
 +    --md-toolbar-border: 1px solid rgba(103, 232, 249, .18);
    }
+ }

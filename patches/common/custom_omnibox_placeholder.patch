@@ -1,9 +1,13 @@
 diff --git a/chrome/app/generated_resources.grd b/chrome/app/generated_resources.grd
+index fb791c67e064d..ceae1d24a21be 100644
 --- a/chrome/app/generated_resources.grd
 +++ b/chrome/app/generated_resources.grd
-@@ -7437,4 +7437,4 @@
+@@ -6974,7 +6974,7 @@ Keep your key file in a safe place. You will need it to create new versions of y
+ 
        <!-- Omnibox -->
        <message name="IDS_OMNIBOX_PLACEHOLDER_TEXT" desc="The text displayed in the Omnibox when it is empty and unfocused.">
 -        Search <ph name="SEARCH_ENGINE_NAME">$1<ex>Google</ex></ph> or type a URL
 +        Search with <ph name="SEARCH_ENGINE_NAME">$1<ex>Google</ex></ph> or type a URL
        </message>
+       <if expr="not use_titlecase">
+         <message name="IDS_PASTE_AND_GO" desc="The text label of the Paste And Go menu item when the clipboard contains a URL">
