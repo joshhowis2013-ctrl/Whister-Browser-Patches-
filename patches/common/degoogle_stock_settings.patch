@@ -1,5 +1,5 @@
 diff --git a/chrome/app/chromium_strings.grd b/chrome/app/chromium_strings.grd
-index 752d2dd80942e..3b3f307bea81e 100644
+index 752d2dd80942e..cb232b49a7c7b 100644
 --- a/chrome/app/chromium_strings.grd
 +++ b/chrome/app/chromium_strings.grd
 @@ -294,10 +294,10 @@ If you update this file, be sure also to update google_chrome_strings.grd. -->
@@ -63,6 +63,32 @@ index 58b7213a06dd9..b7ed4d712f09a 100644
        Verify it's you
      </message>
      <message name="IDS_SETTINGS_TURN_OFF_SYNC_AND_SIGN_OUT_DIALOG_TITLE" desc="The text to display on the title of the dialog to turn off sync and sign out.">
+diff --git a/chrome/browser/resources/settings/route.ts b/chrome/browser/resources/settings/route.ts
+index ad1a046b7d475..3484aae04091c 100644
+--- a/chrome/browser/resources/settings/route.ts
++++ b/chrome/browser/resources/settings/route.ts
+@@ -205,7 +205,7 @@ function createRoutes(): SettingsRoutes {
+     addSharedPeopleRoutes(r, r.PEOPLE);
+   }
+ 
+-  if (visibility.ai !== false && loadTimeData.getBoolean('showAiPage')) {
++  if (false && visibility.ai !== false && loadTimeData.getBoolean('showAiPage')) {
+     r.AI = r.BASIC.createSection(
+         '/ai', 'ai', loadTimeData.getString('aiPageTitle'));
+     if (loadTimeData.getBoolean('enableAiModeSearchSetting')) {
+diff --git a/chrome/browser/resources/settings/settings_menu/settings_menu.ts b/chrome/browser/resources/settings/settings_menu/settings_menu.ts
+index 54a2ce84abe3f..dc9205ca9fab0 100644
+--- a/chrome/browser/resources/settings/settings_menu/settings_menu.ts
++++ b/chrome/browser/resources/settings/settings_menu/settings_menu.ts
+@@ -85,7 +85,7 @@ export class SettingsMenuElement extends SettingsMenuElementBase {
+   protected accessor managementPageUrl_: string =
+       loadTimeData.getString('managementPageUrl');
+   protected accessor pageVisibility_: PageVisibility|undefined = pageVisibility;
+-  private accessor showAiPage_: boolean = loadTimeData.getBoolean('showAiPage');
++  private accessor showAiPage_: boolean = false;
+   private pathToActionMap_: Map<string, string>;
+ 
+   private metricsBrowserProxy_: MetricsBrowserProxy =
 diff --git a/ui/webui/resources/cr_elements/cr_toolbar/cr_toolbar.html.ts b/ui/webui/resources/cr_elements/cr_toolbar/cr_toolbar.html.ts
 index b2004a0e69873..7a61bafcc1c3b 100644
 --- a/ui/webui/resources/cr_elements/cr_toolbar/cr_toolbar.html.ts
