@@ -1,7 +1,8 @@
 diff --git a/chrome/app/chromium_strings.grd b/chrome/app/chromium_strings.grd
-index 752d2dd80942e..a53b4f31c5a9b 100644
+index 752d2dd80942e..cb232b49a7c7b 100644
 --- a/chrome/app/chromium_strings.grd
 +++ b/chrome/app/chromium_strings.grd
+
 @@ -1167,7 +1167,7 @@ Chromium is unable to recover your settings.
        <!-- Page menu. Android has separate strings for its menu -->
        <if expr="not is_android">
@@ -66,9 +67,18 @@ index 752d2dd80942e..a53b4f31c5a9b 100644
  
        <!-- History Strings -->
 diff --git a/chrome/app/generated_resources.grd b/chrome/app/generated_resources.grd
-index fb791c67e064d..91600e8d79869 100644
+index fb791c67e064d..bab5c827dfd5b 100644
 --- a/chrome/app/generated_resources.grd
 +++ b/chrome/app/generated_resources.grd
+@@ -6974,7 +6974,7 @@ Keep your key file in a safe place. You will need it to create new versions of y
+ 
+       <!-- Omnibox -->
+       <message name="IDS_OMNIBOX_PLACEHOLDER_TEXT" desc="The text displayed in the Omnibox when it is empty and unfocused.">
+-        Search <ph name="SEARCH_ENGINE_NAME">$1<ex>Google</ex></ph> or type a URL
++        Search with <ph name="SEARCH_ENGINE_NAME">$1<ex>Google</ex></ph> or type a URL
+       </message>
+       <if expr="not use_titlecase">
+         <message name="IDS_PASTE_AND_GO" desc="The text label of the Paste And Go menu item when the clipboard contains a URL">
 @@ -8767,7 +8767,7 @@ Keep your key file in a safe place. You will need it to create new versions of y
          Please try again later
        </message>
